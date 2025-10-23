@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Avarias</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background-color: #f4f4f9; }
+        .container { display: flex; gap: 40px; }
+        .form-section { flex: 1; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); align-self: flex-start; }
+        .workflow-section { flex: 2; }
+        .status-section { margin-bottom: 40px; }
+        h1, h2, h3 { color: #333; border-bottom: 2px solid #007bff; padding-bottom: 5px; }
+        h3 { border-bottom: 1px solid #ccc; }
+        form { display: flex; flex-direction: column; gap: 10px; }
+        input, textarea { padding: 10px; border: 1px solid #ccc; border-radius: 4px; font-size: 1em; }
+        button { padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1em; }
+        .btn-lote { background-color: #ffc107; color: #212529; font-weight: bold; }
+        .fornecedor-grupo { margin-bottom: 20px; background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .grupo-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .produto-item { border-top: 1px solid #eee; padding-top: 10px; margin-top: 10px; }
+        .lote-item { background-color: #fff; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); margin-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Sistema de Gestão de Avarias</h1>
+    <div class="container">
+        <div class="form-section">
+            <h2>Registar Produto Avariado</h2>
+            <form action="/adicionar" method="post">
+                <input type="text" name="sku" placeholder="SKU do Produto" required>
+                <input type="text" name="nome_produto" placeholder="Nome do Produto" required>
+                <input type="text" name="modelo" placeholder="Modelo do Produto">
+                <input type="text" name="fornecedor" placeholder="Nome do Fornecedor" required>
+                <input type="text" name="ean" placeholder="EAN (Código de Barras)">
+                <textarea name="descricao_avaria" placeholder="Descrição da Avaria" required></textarea>
+                <button type="submit">Adicionar Produto</button>
+            </form>
+        </div>
+        <div class="workflow-section">
+            <div class="status-section">
+                <h2><span style="color: #dc3545;">●</span> Pendentes</h2>
+                {% for fornecedor, produtos in produtos_pendentes.items() %}
+                    <div class="fornecedor-grupo">
+                        <div class="grupo-header">
+                            <h3>Fornecedor: {{ fornecedor }} ({{ produtos|length }} itens)</h3>
+                            <form action="{{ url_for('criar_lote', fornecedor_nome=fornecedor) }}" method="post" style="display: inline;">
+                                <button type="submit" class="btn-lote">Iniciar Tratativa / Criar Lote</button>
+                            </form>
+                        </div>
+                        {% for produto in produtos %}
+                            <div class="produto-item">
+                                <p><strong>ID: {{ produto.id }}</strong> | <strong>SKU:</strong> {{ produto.sku }} | <strong>Modelo:</strong> {{ produto.modelo }}</p>
+                                <p>{{ produto.nome_produto }}</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p>Nenhum produto pendente.</p>
+                {% endfor %}
+            </div>
+
+            <div class="status-section">
+                <h2><span style="color: #ffc107;">●</span> Lotes em Andamento</h2>
+                {% for lote in lotes_em_andamento %}
+                    <div class="lote-item">
+                        <p><strong>Lote ID: {{ lote.id }}</strong> | <strong>Fornecedor:</strong> {{ lote.fornecedor_nome }}</p>
+                        <p>Criado em: {{ lote.data_criacao.strftime('%d/%m/%Y') }} | {{ lote.produtos|length }} produtos</p>
+                        <a href="#">Ver Detalhes e Imprimir Relatório</a>
+                    </div>
+                {% else %}
+                    <p>Nenhum lote em andamento.</p>
+                {% endfor %}
+            </div>
+
+            <div class="status-section">
+                <h2><span style="color: #28a745;">●</span> Lotes Finalizados</h2>
+                 {% for lote in lotes_finalizados %}
+                    <div class="lote-item" style="opacity: 0.7;">
+                        <p><strong>Lote ID: {{ lote.id }}</strong> | <strong>Fornecedor:</strong> {{ lote.fornecedor_nome }}</p>
+                        <p>Criado em: {{ lote.data_criacao.strftime('%d/%m/%Y') }} | {{ lote.produtos|length }} produtos</p>
+                    </div>
+                {% else %}
+                    <p>Nenhum lote finalizado.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>

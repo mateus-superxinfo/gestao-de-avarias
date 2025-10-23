@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Etiquetas - ID {{ produto.id }}</title>
+    <style>
+        /* Estilos para a impressão na etiqueta Zebra */
+        
+        /* Remove todas as margens do corpo da página ao imprimir */
+        @media print {
+            body {
+                margin: 0;
+                padding: 0;
+            }
+            /* Define o tamanho da página de impressão, se necessário. 
+               Ajuste nas configurações da impressora é mais garantido. */
+            @page {
+                size: 40mm 60mm; /* Largura x Altura total (2 etiquetas + espaço) */
+                margin: 0;
+            }
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            /* Apenas para visualização no navegador */
+            margin: 10px; 
+        }
+
+        /* Define o layout de cada etiqueta individual */
+        .etiqueta {
+            width: 4cm;       /* Largura exata da etiqueta */
+            height: 2.5cm;    /* Altura exata da etiqueta */
+            padding: 2mm;     /* Uma pequena margem interna */
+            border: 1px dashed grey; /* Apenas para visualização no navegador */
+            box-sizing: border-box; /* Garante que a borda e o padding não aumentem o tamanho */
+            
+            /* Estilos de texto para caber no espaço pequeno */
+            font-size: 8pt;     /* Tamanho da fonte bem pequeno */
+            line-height: 1.2;
+            overflow: hidden; /* Esconde qualquer texto que ultrapasse o tamanho */
+
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Adiciona um espaço entre as duas etiquetas na visualização */
+        .etiqueta:first-of-type {
+            margin-bottom: 5mm;
+        }
+        
+        p {
+            margin: 0;
+            padding: 0;
+        }
+
+        .info-principal {
+            font-size: 9pt;
+            font-weight: bold;
+            padding-bottom: 2mm;
+            margin-bottom: 2mm;
+            border-bottom: 1px solid #ccc;
+        }
+
+        .motivo-texto {
+            /* Permite que o texto quebre para caber na etiqueta */
+            word-wrap: break-word;
+            white-space: normal;
+        }
+    </style>
+</head>
+<body onload="window.print()">
+
+    <div class="etiqueta">
+        <p class="info-principal">ID: {{ produto.id }} | SKU: {{ produto.sku }}</p>
+        <p><strong>Marca:</strong> {{ produto.fornecedor }}</p>
+        <p><strong>Modelo:</strong> {{ produto.modelo }}</p> <p><strong>Entrada:</strong> {{ produto.data_entrada.strftime('%d/%m/%Y') }}</p>
+    </div>
+
+    <div class="etiqueta">
+        <p class="info-principal">ID: {{ produto.id }} | SKU: {{ produto.sku }}</p>
+        <p><strong>Motivo da Avaria:</strong></p>
+        <p class="motivo-texto">{{ produto.descricao_avaria }}</p>
+    </div>
+
+</body>
+</html>
