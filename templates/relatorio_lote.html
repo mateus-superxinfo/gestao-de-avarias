@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Relatório de Retirada - Lote #{{ lote.id }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; color: #333; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 20px; margin-bottom: 30px; }
+        .info-geral { margin-bottom: 20px; display: flex; justify-content: space-between; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+        th, td { border: 1px solid #ccc; padding: 10px; text-align: left; font-size: 12px; }
+        th { background-color: #f2f2f2; }
+        .assinaturas { margin-top: 60px; display: flex; justify-content: space-around; }
+        .campo-assinatura { text-align: center; width: 250px; }
+        .linha { border-top: 1px solid #000; margin-bottom: 5px; }
+        
+        /* Botão de impressão que desaparece no papel */
+        @media print {
+            .no-print { display: none; }
+            body { padding: 0; }
+        }
+        .btn-print { background: #28a745; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; text-decoration: none; }
+    </style>
+</head>
+<body>
+
+    <div class="no-print" style="margin-bottom: 20px;">
+        <a href="/" style="text-decoration: none; color: #007bff;">← Voltar ao Painel</a> | 
+        <button onclick="window.print()" class="btn-print">Imprimir Relatório</button>
+    </div>
+
+    <div class="header">
+        <h1>Relatório de Retirada para Garantia</h1>
+        <p>Controle Interno de Avarias</p>
+    </div>
+
+    <div class="info-geral">
+        <div>
+            <p><strong>LOTE ID:</strong> #{{ lote.id }}</p>
+            <p><strong>FORNECEDOR:</strong> {{ lote.fornecedor_nome }}</p>
+        </div>
+        <div style="text-align: right;">
+            <p><strong>DATA DE CRIAÇÃO:</strong> {{ lote.data_criacao.strftime('%d/%m/%Y %H:%M') }}</p>
+            <p><strong>TOTAL DE ITENS:</strong> {{ lote.produtos|length }}</p>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>SKU</th>
+                <th>Modelo / Produto</th>
+                <th>Descrição da Avaria</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for produto in lote.produtos %}
+            <tr>
+                <td>{{ produto.id }}</td>
+                <td>{{ produto.sku }}</td>
+                <td><strong>{{ produto.modelo }}</strong><br>{{ produto.nome_produto }}</td>
+                <td>{{ produto.descricao_avaria }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="assinaturas">
+        <div class="campo-assinatura">
+            <div class="linha"></div>
+            <p>Responsável Interno (Saída)</p>
+        </div>
+        <div class="campo-assinatura">
+            <div class="linha"></div>
+            <p>Retirado por (Fornecedor/Logística)</p>
+            <p>Data: ___/___/___</p>
+        </div>
+    </div>
+
+</body>
+</html>
