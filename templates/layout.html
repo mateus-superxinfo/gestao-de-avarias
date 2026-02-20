@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Sistema Integrado{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #2563eb; --primary-hover: #1d4ed8;
+            --bg-body: #f8fafc; --bg-sidebar: #1e293b;
+            --text-main: #334155; --text-muted: #64748b;
+            --success: #22c55e; --danger: #ef4444; --warning: #f59e0b;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+        body { font-family: 'Inter', sans-serif; display: flex; margin: 0; background: var(--bg-body); color: var(--text-main); }
+        
+        /* Sidebar Moderna */
+        .sidebar { width: 260px; background: var(--bg-sidebar); color: white; height: 100vh; position: sticky; top: 0; padding: 25px 15px; box-sizing: border-box; }
+        .sidebar h3 { font-size: 1.2rem; margin-bottom: 30px; padding-left: 10px; color: #38bdf8; }
+        .sidebar a { color: #cbd5e1; text-decoration: none; display: flex; align-items: center; padding: 12px 15px; border-radius: 8px; margin-bottom: 8px; transition: 0.3s; }
+        .sidebar a i { margin-right: 12px; width: 20px; text-align: center; }
+        .sidebar a:hover { background: #334155; color: white; }
+        .sidebar a.active { background: var(--primary); color: white; }
+
+        .content { flex: 1; padding: 40px; max-width: 1400px; margin: 0 auto; }
+        .card { background: white; border-radius: 12px; box-shadow: var(--shadow); padding: 25px; border: 1px solid #e2e8f0; }
+        
+        /* Badges e Botões */
+        .badge-count { background: var(--danger); color: white; border-radius: 50%; padding: 2px 7px; font-size: 0.7rem; margin-left: auto; }
+        .btn-sm { padding: 8px 16px; border-radius: 6px; font-weight: 600; cursor: pointer; border: none; transition: 0.2s; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <h3><i class="fas fa-boxes"></i> LogiControl</h3>
+        <div style="margin-bottom: 25px; padding-left: 10px; font-size: 0.85rem; color: #94a3b8;">
+            Olá, <strong>{{ current_user.first_name }}</strong>
+        </div>
+        <a href="{{ url_for('home') }}"><i class="fas fa-home"></i> Dashboard</a>
+        <a href="{{ url_for('tarefas_futuras') }}"><i class="fas fa-calendar-alt"></i> Agenda 7 Dias</a>
+        <a href="{{ url_for('notificacoes') }}">
+            <i class="fas fa-bell"></i> Notificações 
+            {% if unread > 0 %}<span class="badge-count">{{ unread }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('avarias') }}"><i class="fas fa-exclamation-triangle"></i> Gestão de Avarias</a>
+        <a href="{{ url_for('chamados') }}"><i class="fas fa-comments"></i> Chamados</a>
+        
+        {% if current_user.role == 'gestor' %}
+            <hr style="border: 0.5px solid #334155; margin: 20px 0;">
+            <a href="{{ url_for('gerir_usuarios') }}"><i class="fas fa-users-cog"></i> Gestão de Equipe</a>
+        {% endif %}
+        
+        <a href="{{ url_for('logout') }}" style="margin-top: auto; color: #f87171;"><i class="fas fa-sign-out-alt"></i> Sair</a>
+    </div>
+    <div class="content">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

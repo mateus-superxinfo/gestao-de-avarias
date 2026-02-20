@@ -1,0 +1,92 @@
+{% extends "layout.html" %}
+{% block content %}
+<style>
+    .ticket-container { display: grid; grid-template-columns: 300px 1fr; gap: 25px; height: 80vh; }
+    .list-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; overflow-y: auto; }
+    .chat-panel { background: white; border-radius: 12px; border: 1px solid #e2e8f0; display: flex; flex-direction: column; overflow: hidden; }
+    .msg-bubble { max-width: 80%; padding: 12px 16px; border-radius: 12px; margin-bottom: 10px; font-size: 0.9rem; line-height: 1.4; }
+    .msg-sent { align-self: flex-end; background: var(--primary); color: white; border-bottom-right-radius: 2px; }
+    .msg-received { align-self: flex-start; background: #f1f5f9; color: var(--text-main); border-bottom-left-radius: 2px; }
+</style>
+
+<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+    <h2 style="margin:0;"><i class="fas fa-comments"></i> Central de Chamados</h2>
+    <button onclick="document.getElementById('modalChamado').style.display='block'" class="btn-sm" style="background: var(--primary); color: white; padding: 10px 20px;">+ Novo Chamado</button>
+</div>
+
+<div class="ticket-container">
+    <aside class="list-panel">
+        {% for t in chamados %}
+        <a href="{{ url_for('ver_chamado', ticket_id=t.id) }}" style="text-decoration:none; color:inherit;">
+            <div style="padding: 15px; border-bottom: 1px solid #f1f5f9; {{ 'background:#eff6ff; border-left:4px solid var(--primary);' if ticket and ticket.id == t.id }}">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;">
+                    <strong>#{{ t.id }}</strong>
+                    <span style="font-size:0.7rem; font-weight:bold; color:{{ '#22c55e' if t.status == 'Aberto' else '#64748b' }};">{{ t.status.upper() }}</span>
+                </div>
+                <div style="font-size:0.9rem; font-weight:600; margin-bottom:5px;">{{ t.subject[:30] }}</div>
+                <div style="font-size:0.75rem; color:var(--text-muted);">Criado por: {{ t.creator.first_name }}</div>
+            </div>
+        </a>
+        {% endfor %}
+    </aside>
+
+    <main class="chat-panel">
+        {% if ticket %}
+            <div style="padding: 20px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <h3 style="margin:0;">{{ ticket.subject }}</h3>
+                    <form action="{{ url_for('fechar_chamado', ticket_id=ticket.id) }}" method="POST">
+                        <button type="submit" class="btn-sm" style="background:#fee2e2; color:#ef4444;">Encerrar</button>
+                    </form>
+                </div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                    <span style="font-size:0.75rem; font-weight:bold; color:var(--text-muted);">PARTICIPANTES:</span>
+                    {% for p in ticket.participants %}
+                        <span style="background:#e0f2fe; color:#0369a1; padding:2px 10px; border-radius:15px; font-size:0.75rem; display:flex; align-items:center;">
+                            {{ p.first_name }}
+                            <form action="{{ url_for('gerir_participante', ticket_id=ticket.id) }}" method="POST" style="margin-left:5px;">
+                                <input type="hidden" name="user_id" value="{{ p.id }}">
+                                <input type="hidden" name="acao" value="remove">
+                                <button type="submit" style="border:none; background:none; cursor:pointer; color:#ef4444;">×</button>
+                            </form>
+                        </span>
+                    {% endfor %}
+                    <form action="{{ url_for('gerir_participante', ticket_id=ticket.id) }}" method="POST">
+                        <input type="hidden" name="acao" value="add">
+                        <select name="user_id" onchange="this.form.submit()" style="font-size:0.7rem; border-radius:10px; border:1px solid #ddd;">
+                            <option value="">+ Add</option>
+                            {% for u in usuarios %}
+                                {% if u not in ticket.participants and u.id != current_user.id %}
+                                    <option value="{{ u.id }}">{{ u.first_name }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            <div style="flex: 1; padding: 25px; overflow-y: auto; display: flex; flex-direction: column;">
+                {% for msg in ticket.messages %}
+                <div class="msg-bubble {{ 'msg-sent' if msg.user_id == current_user.id else 'msg-received' }}">
+                    <div style="font-size: 0.7rem; font-weight: bold; margin-bottom: 4px; opacity: 0.9;">{{ msg.author.first_name }}</div>
+                    {{ msg.content }}
+                    <div style="font-size: 0.6rem; text-align: right; margin-top: 4px; opacity: 0.7;">{{ msg.timestamp.strftime('%H:%M') }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <form action="{{ url_for('responder_chamado', ticket_id=ticket.id) }}" method="POST" style="padding: 20px; border-top: 1px solid #e2e8f0;">
+                <div style="display: flex; gap: 12px;">
+                    <textarea name="content" placeholder="Escreva sua resposta..." required style="flex:1; border:1px solid #e2e8f0; border-radius:8px; padding:10px; resize:none; height:50px;"></textarea>
+                    <button type="submit" class="btn-sm" style="background:var(--primary); color:white; width:100px;">Enviar</button>
+                </div>
+            </form>
+        {% else %}
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--text-muted);">
+                <i class="far fa-comments fa-4x" style="margin-bottom:20px; opacity:0.2;"></i>
+                <p>Selecione um chamado para visualizar a conversa.</p>
+            </div>
+        {% endif %}
+    </main>
+</div>
+{% endblock %}

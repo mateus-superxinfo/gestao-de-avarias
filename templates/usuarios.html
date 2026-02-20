@@ -1,0 +1,76 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>👥 Gestão de Equipe</h2>
+
+<div style="display: grid; grid-template-columns: 1fr 2fr; gap: 20px;">
+    <div class="card" style="padding: 20px; background: white; border-radius: 10px;">
+        <h3>Novo Acesso</h3>
+        <form action="{{ url_for('gerir_usuarios') }}" method="POST">
+            <input type="text" name="first_name" placeholder="Nome" required>
+            <input type="text" name="last_name" placeholder="Sobrenome" required>
+            <input type="email" name="email" placeholder="E-mail" required> <input type="text" name="username" placeholder="Usuário (Login)" required>
+            <input type="password" name="password" placeholder="Senha" required>
+            <select name="role">
+                <option value="operador">Operador</option>
+                <option value="gestor">Gestor</option>
+            </select>
+            <button type="submit" class="btn-sm-avaria btn-blue" style="width:100%; margin-top:10px;">Criar Conta</button>
+        </form>
+    </div>
+
+    <div class="card" style="padding: 20px; background: white; border-radius: 10px;">
+        <table style="width:100%; border-collapse: collapse;">
+            <thead>
+                <tr style="text-align:left; border-bottom: 2px solid #eee;">
+                    <th>Colaborador</th>
+                    <th>E-mail</th>
+                    <th>Função</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for u in usuarios %}
+                <tr style="border-bottom: 1px solid #eee;">
+                    <td style="padding:10px 0;"><strong>{{ u.first_name }} {{ u.last_name }}</strong><br><small>{{ u.username }}</small></td>
+                    <td>{{ u.email }}</td>
+                    <td><span class="tipo-badge">{{ u.role }}</span></td>
+                    <td>
+                        <div style="display:flex; gap:5px;">
+                            <button onclick="document.getElementById('edit-{{u.id}}').style.display='block'" class="btn-sm btn-gray">Editar</button>
+                            <form action="{{ url_for('excluir_usuario', user_id=u.id) }}" method="POST" onsubmit="return confirm('Tem certeza que deseja remover este usuário?')">
+                                <button type="submit" class="btn-sm btn-red" style="background:#dc3545; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer;">Excluir</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+
+                <div id="edit-{{u.id}}" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+                    <div style="background:white; width:400px; margin:10% auto; padding:25px; border-radius:10px;">
+                        <h4>Editar: {{ u.username }}</h4>
+                        <form action="{{ url_for('editar_usuario', user_id=u.id) }}" method="POST">
+                            <label>Nome:</label>
+                            <input type="text" name="first_name" value="{{ u.first_name }}" required>
+                            <label>Sobrenome:</label>
+                            <input type="text" name="last_name" value="{{ u.last_name }}" required>
+                            <label>E-mail:</label>
+                            <input type="email" name="email" value="{{ u.email }}" required>
+                            <label>Função:</label>
+                            <select name="role">
+                                <option value="operador" {{ 'selected' if u.role == 'operador' }}>Operador</option>
+                                <option value="gestor" {{ 'selected' if u.role == 'gestor' }}>Gestor</option>
+                            </select>
+                            <label>Nova Senha (opcional):</label>
+                            <input type="password" name="password" placeholder="Deixe em branco para manter">
+                            <div style="margin-top:15px; display:flex; gap:10px;">
+                                <button type="submit" class="btn-sm btn-blue">Salvar Alterações</button>
+                                <button type="button" onclick="this.parentElement.parentElement.parentElement.style.display='none'" class="btn-sm btn-gray">Cancelar</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

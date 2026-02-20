@@ -1,0 +1,17 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>🔔 Central de Notificações</h2>
+
+<div class="card" style="padding: 20px; background: white; border-radius: 10px;">
+    {% for n in avisos %}
+    <div style="padding: 15px; border-bottom: 1px solid #eee; {{ 'opacity: 0.6;' if n.is_read }}">
+        <div style="display: flex; justify-content: space-between;">
+            <strong>{{ n.message }}</strong>
+            <small style="color: #666;">{{ n.created_at.strftime('%d/%m %H:%M') }}</small>
+        </div>
+    </div>
+    {% else %}
+    <p style="text-align: center; color: #888;">Nenhuma notificação encontrada.</p>
+    {% endfor %}
+</div>
+{% endblock %}

@@ -1,0 +1,113 @@
+{% extends "layout.html" %}
+{% block content %}
+<style>
+    .task-container { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; }
+    .task-card { 
+        padding: 20px; background: white; border-radius: 12px; margin-bottom: 15px;
+        border: 1px solid #e2e8f0; border-left: 6px solid var(--primary); transition: 0.2s;
+    }
+    .task-card.atrasada { border-left-color: var(--danger); background: #fff8f8; }
+    .status-done { opacity: 0.6; border-left-color: var(--success) !important; background: #f0fff4 !important; }
+    
+    .form-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 5px; }
+    .form-control { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; font-family: inherit; }
+</style>
+
+<div class="task-container">
+    <section>
+        <h2 style="margin-top: 0;"><i class="fas fa-tasks"></i> Tarefas do Dia - {{ hoje.strftime('%d/%m/%Y') }}</h2>
+        
+        {% for t in tarefas %}
+        <div class="task-card {{ 'status-done' if t.is_completed }} {{ 'atrasada' if t.due_date < hoje and not t.is_completed }}">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+                        <strong style="font-size: 1.1rem;">{{ t.title }}</strong>
+                        {% if t.is_completed %}
+                            <span class="badge-status" style="background:#dcfce7; color:#166534;">CONCLUÍDA</span>
+                        {% elif t.due_date < hoje %}
+                            <span class="badge-status" style="background:#fee2e2; color:#991b1b;">ATRASADA</span>
+                        {% endif %}
+                    </div>
+                    
+                    <p style="color: var(--text-main); margin-bottom: 10px;">{{ t.description or 'Sem descrição.' }}</p>
+                    
+                    <div style="display: flex; gap: 15px; font-size: 0.75rem; color: var(--text-muted);">
+                        <span><i class="far fa-calendar"></i> Prazo: {{ t.due_date.strftime('%d/%m/%Y') }}</span>
+                        <span><i class="fas fa-sync"></i> {{ t.recurrence.capitalize() }}</span>
+                    </div>
+
+                    {% if t.postpone_log %}
+                        <div style="margin-top: 10px; font-size: 0.7rem; color: var(--danger); background: #fff1f2; padding: 5px; border-radius: 4px;">
+                            <i class="fas fa-exclamation-circle"></i> Histórico: {{ t.postpone_log.split('\n')[-2] }}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <div style="display: flex; gap: 8px;">
+                    {% if not t.is_completed %}
+                        <button onclick="document.getElementById('modal-{{t.id}}').style.display='block'" class="btn-sm" style="background:#f1f5f9; color:var(--text-main);">Adiar</button>
+                        <a href="{{ url_for('ticar_tarefa', task_id=t.id) }}" class="btn-sm" style="background:var(--success); color:white; text-decoration:none;">✓ Ticar</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div id="modal-{{t.id}}" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); z-index:1000;">
+            <div class="card" style="width: 400px; margin: 15% auto;">
+                <h3>Adiar Tarefa</h3>
+                <form action="{{ url_for('prorrogar_tarefa', task_id=t.id) }}" method="POST">
+                    <label class="form-label">Nova Data</label>
+                    <input type="date" name="nova_data" class="form-control" min="{{ hoje }}" required>
+                    <label class="form-label">Motivo</label>
+                    <textarea name="motivo" class="form-control" placeholder="Por que adiar?" required></textarea>
+                    <div style="display: flex; justify-content: flex-end; gap: 10px;">
+                        <button type="button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="btn-sm" style="background:#eee;">Cancelar</button>
+                        <button type="submit" class="btn-sm" style="background:var(--primary); color:white;">Confirmar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        {% else %}
+            <div class="card" style="text-align: center; padding: 50px;">
+                <p style="color: var(--text-muted);">🎉 Nenhuma tarefa pendente para hoje.</p>
+            </div>
+        {% endfor %}
+    </section>
+
+    <aside>
+        {% if current_user.role == 'gestor' %}
+        <div class="card">
+            <h3 style="margin-top: 0;"><i class="fas fa-plus-circle"></i> Delegar Tarefa</h3>
+            <form action="{{ url_for('criar_tarefa') }}" method="POST">
+                <label class="form-label">Título</label>
+                <input type="text" name="title" class="form-control" placeholder="O que deve ser feito?" required>
+                
+                <label class="form-label">Responsável</label>
+                <select name="assigned_to" class="form-control">
+                    {% for u in usuarios %}
+                        <option value="{{ u.id }}">{{ u.first_name }} {{ u.last_name }}</option>
+                    {% endfor %}
+                </select>
+
+                <label class="form-label">Data Limite (Para fazer em:)</label>
+                <input type="date" name="due_date" class="form-control" value="{{ hoje }}" required>
+
+                <label class="form-label">Recorrência</label>
+                <select name="recurrence" class="form-control">
+                    <option value="nenhuma">Apenas uma vez</option>
+                    <option value="diaria">Diária (Seg-Sex)</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensal">Mensal</option>
+                </select>
+
+                <label class="form-label">Descrição/Instruções</label>
+                <textarea name="description" class="form-control" rows="3" placeholder="Detalhes da tarefa..."></textarea>
+
+                <button type="submit" class="btn-sm" style="background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 8px;">Criar Tarefa</button>
+            </form>
+        </div>
+        {% endif %}
+    </aside>
+</div>
+{% endblock %}

@@ -4,32 +4,45 @@
     <meta charset="UTF-8">
     <title>Impressão de Etiquetas</title>
     <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; }
+        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
         
-        /* FORMATO 1: Zebra 4x2.5cm (O que já usávamos) */
+        /* FORMATO 1: Zebra 4x2.5cm (2 etiquetas por item) */
         {% if formato == 'zebra_pequena' %}
-        .etiqueta { width: 40mm; height: 25mm; padding: 2mm; border: 1px solid #eee; page-break-after: always; overflow: hidden; font-size: 8pt; box-sizing: border-box; }
+        .etiqueta { width: 40mm; height: 25mm; padding: 2mm; border: 1px solid #eee; page-break-after: always; font-size: 8pt; box-sizing: border-box; }
         {% endif %}
 
-        /* FORMATO 2: Zebra 10x15cm (Grande - Cabe tudo) */
-        {% if formato == 'zebra_grande' %}
-        .etiqueta { width: 100mm; height: 150mm; padding: 10mm; border: 1px dashed #ccc; page-break-after: always; font-size: 14pt; box-sizing: border-box; }
-        .etiqueta h2 { border-bottom: 2px solid #000; margin-bottom: 10px; }
-        {% endif %}
-
-        /* FORMATO 3: A4 (4 por folha - aprox 10x14cm cada) */
+        /* FORMATO 2 e 3: Zebra Grande ou A4 (Informação junta) */
         {% if formato == 'a4_quadrupla' %}
-        .grid-a4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; width: 210mm; height: 297mm; }
-        .etiqueta { border: 1px solid #000; padding: 10mm; box-sizing: border-box; display: flex; flex-direction: column; justify-content: center; }
+        /* Otimizado para 4 etiquetas lado a lado na largura da folha A4 */
+        .grid-a4 { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 2mm; 
+            width: 210mm; 
+            padding: 5mm; 
+            box-sizing: border-box; 
+        }
+        .etiqueta { 
+            border: 1px solid #000; 
+            padding: 3mm; 
+            box-sizing: border-box; 
+            font-size: 7pt; /* Fonte reduzida para o novo tamanho */
+            min-height: 45mm; 
+            display: flex; 
+            flex-direction: column; 
+        }
         @page { size: A4; margin: 0; }
         {% endif %}
 
-        .info { margin-bottom: 5px; }
-        .barcode-sim { background: #000; color: #fff; text-align: center; padding: 2px; font-weight: bold; }
+        {% if formato == 'zebra_grande' %}
+        .etiqueta { width: 100mm; height: 150mm; padding: 10mm; border: 1px dashed #ccc; page-break-after: always; font-size: 14pt; box-sizing: border-box; }
+        {% endif %}
 
+        .info-title { font-weight: bold; border-bottom: 1px solid #000; margin-bottom: 5px; text-align: center; font-size: 1.1em; }
+        
         @media print {
             .no-print { display: none; }
-            .etiqueta { border: none !important; }
+            .etiqueta { border: 1px solid #ddd !important; } /* Borda leve para guiar o corte */
         }
     </style>
 </head>

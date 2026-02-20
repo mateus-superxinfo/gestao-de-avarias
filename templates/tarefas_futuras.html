@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+{% block content %}
+<h2>📅 Agenda para os Próximos 7 Dias</h2>
+<p style="color: #666;">Estas tarefas não aparecem no seu painel principal até a data de vencimento.</p>
+
+<div class="card" style="padding: 20px; background: white; border-radius: 10px;">
+    {% for t in tarefas %}
+    <div style="padding: 15px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between;">
+        <div>
+            <strong>{{ t.title }}</strong><br>
+            <small>{{ t.description }}</small>
+        </div>
+        <span class="timer-badge" style="background: var(--info);">Vence em: {{ t.due_date.strftime('%d/%m/%Y') }}</span>
+    </div>
+    {% else %}
+    <p>Nenhuma tarefa agendada para os próximos dias.</p>
+    {% endfor %}
+    <a href="{{ url_for('home') }}" class="btn-sm btn-blue" style="margin-top: 20px; display: inline-block; text-decoration: none;">Voltar ao Hoje</a>
+</div>
+{% endblock %}
