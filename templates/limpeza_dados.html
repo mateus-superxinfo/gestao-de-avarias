@@ -1,0 +1,83 @@
+{% extends "layout.html" %}
+{% block content %}
+<style>
+    .danger-section { background: white; border-radius: 12px; border: 1px solid #fee2e2; margin-bottom: 30px; overflow: hidden; }
+    .danger-header { background: #ef4444; color: white; padding: 15px 20px; font-weight: bold; display: flex; align-items: center; gap: 10px; }
+    .table-clean { width: 100%; border-collapse: collapse; }
+    .table-clean td, .table-clean th { padding: 12px 20px; text-align: left; border-bottom: 1px solid #f1f5f9; }
+    .status-tag { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: bold; }
+</style>
+
+<h2><i class="fas fa-eraser"></i> Central de Exclusão de Dados</h2>
+<p style="color: #64748b; margin-bottom: 30px;">Gestor: Utilize esta área para encerrar ciclos de tarefas recorrentes ou limpar chamados antigos.</p>
+
+<div class="danger-section">
+    <div class="danger-header"><i class="fas fa-tasks"></i> Gestão de Tarefas (Encerrar Recorrências)</div>
+    <table class="table-clean">
+        <thead>
+            <tr style="font-size: 0.8rem; color: #94a3b8;">
+                <th>Tarefa / Recorrência</th>
+                <th>Status</th>
+                <th>Responsável</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in tarefas %}
+            <tr>
+                <td>
+                    <strong>{{ t.title }}</strong><br>
+                    <small><i class="fas fa-sync"></i> {{ t.recurrence.capitalize() }} | Vence: {{ t.due_date.strftime('%d/%m/%Y') }}</small>
+                </td>
+                <td>
+                    {% if t.is_completed %}
+                        <span class="status-tag" style="background:#dcfce7; color:#166534;">CONCLUÍDA</span>
+                    {% else %}
+                        <span class="status-tag" style="background:#fff7ed; color:#9a3412;">PENDENTE</span>
+                    {% endif %}
+                </td>
+                <td>{{ t.assigned_to }}</td>
+                <td>
+                    <form action="{{ url_for('excluir_tarefa_geral', id=t.id) }}" method="POST" onsubmit="return confirm('Ao excluir uma tarefa pendente recorrente, ela NÃO será mais criada automaticamente. Confirmar?')">
+                        <button type="submit" style="color:#ef4444; border:none; background:none; cursor:pointer;"><i class="fas fa-trash-alt"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<div class="danger-section">
+    <div class="danger-header"><i class="fas fa-comments"></i> Limpeza de Chamados</div>
+    <table class="table-clean">
+        <thead>
+            <tr style="font-size: 0.8rem; color: #94a3b8;">
+                <th>Assunto / Data</th>
+                <th>Status</th>
+                <th>Criado por</th>
+                <th>Ação</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for c in chamados %}
+            <tr>
+                <td><strong>#{{ c.id }} - {{ c.subject }}</strong><br><small>{{ c.created_at.strftime('%d/%m/%Y %H:%M') }}</small></td>
+                <td>
+                    <span class="status-tag" style="{{ 'background:#dcfce7; color:#166534;' if c.status == 'Aberto' else 'background:#f1f5f9; color:#475569;' }}">
+                        {{ c.status.upper() }}
+                    </span>
+                </td>
+                <td>{{ c.creator.first_name }}</td>
+                <td>
+                    <form action="{{ url_for('excluir_chamado_definitivo', id=c.id) }}" method="POST" onsubmit="return confirm('Deseja apagar este chamado e todas as mensagens contidas nele permanentemente?')">
+                        <button type="submit" style="color:#ef4444; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

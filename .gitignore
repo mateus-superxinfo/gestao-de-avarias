@@ -1,9 +1,8 @@
-# Base de dados do SQLite - Nunca deve ir para o repositório!
-produtos.db
-
-# Pasta de cache do Python
 __pycache__/
-
-# Pastas de ambiente virtual (se estiver a usar)
+*.py[cod]
 venv/
-.venv/
+instance/
+.vscode/
+# Proteção de Dados Locais
+*.db
+credentials.json

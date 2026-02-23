@@ -5,6 +5,7 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from collections import defaultdict
+from sqlalchemy import func
 import datetime
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -235,6 +236,85 @@ def home():
     usuarios = User.query.all() if current_user.role == 'gestor' else []
     return render_template('home.html', tarefas=tarefas, hoje=hoje, usuarios=usuarios)
 
+@app.route('/dashboard')
+@login_required
+def dashboard():
+    if current_user.role != 'gestor':
+        return redirect(url_for('home'))
+
+    # KPIs Gerais
+    total_tarefas = Task.query.count()
+    tarefas_concluidas = Task.query.filter_by(is_completed=True).count()
+    total_avarias = ProdutoAvariado.query.count()
+    itens_pendentes = ProdutoAvariado.query.filter_by(status='Pendente').count()
+
+    # 1. Ranking de Operadores (Tarefas Concluídas)
+    ranking_operadores = db.session.query(
+        User.first_name, func.count(Task.id)
+    ).join(Task, Task.assigned_to == User.id).filter(Task.is_completed == True).group_by(User.id).all()
+
+    # 2. Ranking de Fornecedores
+    ranking_fornecedores = db.session.query(
+        ProdutoAvariado.fornecedor, func.count(ProdutoAvariado.id)
+    ).group_by(ProdutoAvariado.fornecedor).order_by(func.count(ProdutoAvariado.id).desc()).limit(5).all()
+
+    # 3. Produtos com Maior % de Problemas
+    ranking_produtos = db.session.query(
+        ProdutoAvariado.nome_produto, func.count(ProdutoAvariado.id)
+    ).group_by(ProdutoAvariado.sku).order_by(func.count(ProdutoAvariado.id).desc()).limit(5).all()
+
+    return render_template('dashboard.html', 
+                           tarefas_total=total_tarefas,
+                           tarefas_concluidas=tarefas_concluidas,
+                           avarias_total=total_avarias,
+                           itens_pendentes=itens_pendentes,
+                           ranking_ops=ranking_operadores,
+                           ranking_forn=ranking_fornecedores,
+                           ranking_prod=ranking_produtos)
+
+# --- ÁREA DE GESTÃO DE DADOS (EXCLUSÃO) ---
+
+@app.route('/limpeza_dados')
+@login_required
+def limpeza_dados():
+    if current_user.role != 'gestor':
+        return redirect(url_for('home'))
+    
+    # Agora buscamos TODAS as tarefas (pendentes e concluídas)
+    tarefas = Task.query.order_by(Task.is_completed, Task.due_date).all()
+    # Buscamos TODOS os chamados
+    chamados = Ticket.query.order_by(Ticket.created_at.desc()).all()
+    lotes_finalizados = Lote.query.filter_by(status='Finalizado').all()
+    usuarios = User.query.filter(User.id != current_user.id).all()
+    
+    return render_template('limpeza_dados.html', 
+                           usuarios=usuarios, 
+                           tarefas=tarefas, 
+                           chamados=chamados,
+                           lotes=lotes_finalizados)
+
+@app.route('/excluir_tarefa_geral/<int:id>', methods=['POST'])
+@login_required
+def excluir_tarefa_geral(id):
+    if current_user.role == 'gestor':
+        t = Task.query.get_or_404(id)
+        nome = t.title
+        db.session.delete(t)
+        db.session.commit()
+        flash(f"Tarefa '{nome}' e suas recorrências futuras foram removidas.")
+    return redirect(url_for('limpeza_dados'))
+
+@app.route('/excluir_chamado_definitivo/<int:id>', methods=['POST'])
+@login_required
+def excluir_chamado_definitivo(id):
+    if current_user.role == 'gestor':
+        chamado = Ticket.query.get_or_404(id)
+        # O SQLAlchemy cuidará de remover mensagens e participantes associados
+        db.session.delete(chamado)
+        db.session.commit()
+        flash(f"Chamado #{id} excluído permanentemente.")
+    return redirect(url_for('limpeza_dados'))
+
 @app.route('/tarefas_futuras')
 @login_required
 def tarefas_futuras():
@@ -302,6 +382,31 @@ def criar_tarefa():
         aviso = Notification(message=f"🆕 Tarefa: {nova_tarefa.title}", user_id=nova_tarefa.assigned_to)
         db.session.add(aviso)
     db.session.commit()
+    return redirect(url_for('home'))
+
+@app.route('/prorrogar_tarefa/<int:task_id>', methods=['POST'])
+@login_required
+def prorrogar_tarefa(task_id):
+    tarefa = Task.query.get_or_404(task_id)
+    nova_data_str = request.form.get('nova_data')
+    motivo = request.form.get('motivo')
+    
+    if nova_data_str:
+        # Converte a string da data para objeto date do Python
+        tarefa.due_date = datetime.datetime.strptime(nova_data_str, '%Y-%m-%d').date()
+        
+        # Registra o motivo no histórico de adiamentos
+        data_hoje = datetime.date.today().strftime('%d/%m/%Y')
+        log_entry = f"Adiado em {data_hoje}: {motivo}\n"
+        
+        if tarefa.postpone_log:
+            tarefa.postpone_log += log_entry
+        else:
+            tarefa.postpone_log = log_entry
+            
+        db.session.commit()
+        flash(f"Tarefa '{tarefa.title}' adiada com sucesso!")
+    
     return redirect(url_for('home'))
 
 @app.route('/abrir_chamado', methods=['POST'])
@@ -405,12 +510,16 @@ def avarias():
 @app.route('/adicionar', methods=['POST'])
 @login_required
 def adicionar():
+    # Captura o fornecedor e aplica a blindagem (Maiúsculas + Limpeza de espaços)
+    fornecedor_raw = request.form.get('fornecedor')
+    fornecedor_blindado = fornecedor_raw.strip().upper() if fornecedor_raw else ""
+
     novo = ProdutoAvariado(
         sku=request.form.get('sku'),
         nome_produto=request.form.get('nome_produto'),
         modelo=request.form.get('modelo'),
-        fornecedor=request.form.get('fornecedor'),
-        tipo=request.form.get('tipo'), # Natureza do Problema
+        fornecedor=fornecedor_blindado, # Salva sempre padronizado
+        tipo=request.form.get('tipo'), 
         descricao_avaria=request.form.get('descricao_avaria'),
         pedido=request.form.get('pedido')
     )
