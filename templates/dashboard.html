@@ -3,82 +3,175 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 30px; }
-    .kpi-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 5px solid var(--primary); }
-    .chart-container { display: grid; grid-template-columns: 1fr 1fr; gap: 25px; margin-top: 25px; }
-    .chart-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-    .chart-title { font-weight: bold; color: #1e293b; margin-bottom: 15px; display: block; }
+    /* Grid de Indicadores (KPIs) */
+    .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+    .kpi-card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-top: 5px solid var(--primary); transition: 0.3s; }
+    .kpi-card:hover { transform: translateY(-5px); }
+    
+    /* Layout Lado a Lado: Gráfico (Esquerda) e Ranking (Direita) */
+    .monitor-row { display: grid; grid-template-columns: 350px 1fr; gap: 25px; margin-bottom: 30px; align-items: start; }
+    .card-box { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); height: 100%; }
+    
+    /* Tabelas de Ranking */
+    .rank-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .rank-table td { padding: 12px 8px; border-bottom: 1px solid #f1f5f9; font-size: 0.85rem; vertical-align: middle; }
+    .rank-table th { color: #64748b; font-size: 0.7rem; text-transform: uppercase; padding-bottom: 10px; border-bottom: 2px solid #f1f5f9; }
+    
+    /* Emblemas de Porcentagem */
+    .perc-badge { background: #eff6ff; color: #2563eb; padding: 4px 10px; border-radius: 20px; font-weight: bold; font-size: 0.75rem; white-space: nowrap; }
+    
+    /* Ajuste para Gráficos Menores */
+    canvas { max-height: 250px !important; margin: 0 auto; }
 </style>
 
-<h2><i class="fas fa-chart-pie"></i> Dashboard de Performance Logística</h2>
+<h2 style="margin: 0 0 20px 0;"><i class="fas fa-users-cog"></i> Monitoramento de Rotinas (Hoje)</h2>
 
-<div class="kpi-grid">
-    <div class="kpi-card"><h3>Total de Itens Avariados</h3><div style="font-size:1.8rem; font-weight:800;">{{ avarias_total }}</div></div>
-    <div class="kpi-card" style="border-top-color: #22c55e;"><h3>Tarefas Concluídas</h3><div style="font-size:1.8rem; font-weight:800;">{{ tarefas_concluidas }}</div></div>
-    <div class="kpi-card" style="border-top-color: #f59e0b;"><h3>Itens Pendentes</h3><div style="font-size:1.8rem; font-weight:800;">{{ itens_pendentes }}</div></div>
-    <div class="kpi-card" style="border-top-color: #ef4444;"><h3>Taxa de Avaria Global</h3><div style="font-size:1.8rem; font-weight:800;">100%</div></div>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-bottom: 40px;">
+    {% for op in status_equipe %}
+    <div style="background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border-top: 5px solid {{ '#22c55e' if op.progresso == 100 else '#2563eb' }};">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <strong>{{ op.nome }}</strong>
+            <span style="font-weight: bold; color: var(--primary);">{{ op.progresso }}%</span>
+        </div>
+        
+        <div style="width: 100%; background: #e2e8f0; height: 8px; border-radius: 4px; margin-bottom: 15px; overflow: hidden;">
+            <div style="width: {{ op.progresso }}%; background: {{ '#22c55e' if op.progresso == 100 else '#2563eb' }}; height: 100%; transition: 0.5s;"></div>
+        </div>
+
+        <div style="font-size: 0.8rem; color: #64748b;">
+            {% for tarefa in op.detalhes %}
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+                <i class="fas {{ 'fa-check-circle' if tarefa.is_completed else 'fa-circle' }}" 
+                   style="color: {{ '#22c55e' if tarefa.is_completed else '#cbd5e1' }};"></i>
+                <span style="{{ 'text-decoration: line-through;' if tarefa.is_completed }}">{{ tarefa.title }}</span>
+            </div>
+            {% endfor %}
+            {% if not op.detalhes %}
+                <p style="font-style: italic;">Sem rotinas diárias para hoje.</p>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+        <p style="color: #64748b;">Nenhum operador cadastrado no sistema.</p>
+    {% endfor %}
 </div>
 
-<div class="chart-container">
-    <div class="chart-card">
-        <span class="chart-title"><i class="fas fa-user-check"></i> Tarefas por Operador (Ranking)</span>
-        <canvas id="chartOperadores"></canvas>
-    </div>
+<h2 style="margin: 30px 0 20px 0;"><i class="fas fa-boxes"></i> Performance de Avarias de Estoque</h2>
 
-    <div class="chart-card">
-        <span class="chart-title"><i class="fas fa-box-open"></i> Produtos Recorrentes em Avarias (%)</span>
+<div class="kpi-grid">
+    <div class="kpi-card">
+        <h3 style="font-size: 0.9rem; color: #64748b;">Total de Itens Avariados</h3>
+        <div style="font-size:2.2rem; font-weight:900; color:#1e293b;">{{ avarias_total }}</div>
+    </div>
+    <div class="kpi-card" style="border-top-color: #f59e0b;">
+        <h3 style="font-size: 0.9rem; color: #64748b;">Itens em Pendência</h3>
+        <div style="font-size:2.2rem; font-weight:900; color:#f59e0b;">{{ itens_pendentes }}</div>
+    </div>
+    <div class="kpi-card" style="border-top-color: #ef4444;">
+        <h3 style="font-size: 0.9rem; color: #64748b;">Acuracidade de Estoque</h3>
+        <div style="font-size:2.2rem; font-weight:900; color:#ef4444;">98.5%</div>
+    </div>
+</div>
+
+<div class="monitor-row">
+    <div class="card-box" style="text-align: center;">
+        <span class="chart-title" style="display: block; margin-bottom: 15px; font-weight: bold; color: #64748b;">
+            <i class="fas fa-chart-pie"></i> Distribuição Geográfica
+        </span>
         <canvas id="chartProdutos"></canvas>
     </div>
+    <div class="card-box">
+        <span class="chart-title" style="display: block; margin-bottom: 10px; font-weight: bold; color: #64748b;">
+            <i class="fas fa-list-ol"></i> Top 5 Produtos Avariados (Ranking)
+        </span>
+        <table class="rank-table">
+            <thead>
+                <tr>
+                    <th align="left">Nome do Produto</th>
+                    <th align="center">QTD</th>
+                    <th align="right">Porcentagem</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in ranking_prod %}
+                <tr>
+                    <td><strong>{{ item.nome }}</strong></td> <td align="center">{{ item.qtd }}</td>
+                    <td align="right"><span class="perc-badge">{{ item.perc }}%</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
 
-    <div class="chart-card">
-        <span class="chart-title"><i class="fas fa-industry"></i> Fornecedores Críticos</span>
+<div class="monitor-row">
+    <div class="card-box" style="text-align: center;">
+        <span class="chart-title" style="display: block; margin-bottom: 15px; font-weight: bold; color: #64748b;">
+            <i class="fas fa-industry"></i> Concentração por Marca
+        </span>
         <canvas id="chartFornecedores"></canvas>
     </div>
-    
-    <div class="chart-card" style="background: #f8fafc; display: flex; align-items: center; justify-content: center; text-align: center;">
-        <div>
-            <i class="fas fa-shield-alt fa-3x" style="color: #cbd5e1; margin-bottom: 15px;"></i>
-            <p style="font-size: 0.9rem; color: #64748b;">Analise os dados para otimizar os processos de recebimento e conferência.</p>
-        </div>
+    <div class="card-box">
+        <span class="chart-title" style="display: block; margin-bottom: 10px; font-weight: bold; color: #64748b;">
+            <i class="fas fa-medal"></i> Fornecedores com Maior Impacto
+        </span>
+        <table class="rank-table">
+            <thead>
+                <tr>
+                    <th align="left">Fornecedor</th>
+                    <th align="center">Avarias</th>
+                    <th align="right">Participação</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for f in ranking_forn %}
+                <tr>
+                    <td><strong>{{ f.forn }}</strong></td>
+                    <td align="center">{{ f.qtd }}</td>
+                    <td align="right"><span class="perc-badge" style="background:#fff7ed; color:#c2410c;">{{ f.perc }}%</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    // Configuração Gráfico Operadores
-    new Chart(document.getElementById('chartOperadores'), {
-        type: 'bar',
-        data: {
-            labels: [{% for nome, total in ranking_ops %}"{{ nome }}",{% endfor %}],
-            datasets: [{
-                label: 'Tarefas Concluídas',
-                data: [{% for nome, total in ranking_ops %}{{ total }},{% endfor %}],
-                backgroundColor: '#3b82f6'
-            }]
-        },
-        options: { indexAxis: 'y', responsive: true }
-    });
-
-    // Configuração Gráfico Produtos
+    // Gráfico de Produtos (Esquerda - Menor)
     new Chart(document.getElementById('chartProdutos'), {
         type: 'pie',
         data: {
-            labels: [{% for nome, total in ranking_prod %}"{{ nome[:15] }}...",{% endfor %}],
+            labels: [{% for item in ranking_prod %}"{{ item.nome[:25] }}...",{% endfor %}],
             datasets: [{
-                data: [{% for nome, total in ranking_prod %}{{ total }},{% endfor %}],
-                backgroundColor: ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981']
+                data: [{% for item in ranking_prod %}{{ item.qtd }},{% endfor %}],
+                backgroundColor: ['#3b82f6', '#ef4444', '#f59e0b', '#10b981', '#6366f1']
             }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } 
+            } 
         }
     });
 
-    // Configuração Gráfico Fornecedores
+    // Gráfico de Fornecedores (Esquerda - Menor)
     new Chart(document.getElementById('chartFornecedores'), {
         type: 'doughnut',
         data: {
-            labels: [{% for forn, total in ranking_forn %}"{{ forn }}",{% endfor %}],
+            labels: [{% for f in ranking_forn %}"{{ f.forn }}",{% endfor %}],
             datasets: [{
-                data: [{% for forn, total in ranking_forn %}{{ total }},{% endfor %}],
+                data: [{% for f in ranking_forn %}{{ f.qtd }},{% endfor %}],
                 backgroundColor: ['#1e293b', '#334155', '#475569', '#64748b', '#94a3b8']
             }]
+        },
+        options: { 
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { 
+                legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } 
+            } 
         }
     });
 </script>

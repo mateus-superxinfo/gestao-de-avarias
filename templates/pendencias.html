@@ -1,0 +1,149 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container-fluid" style="background: #f8fafc; min-height: 100vh; padding: 30px;">
+    
+    <div style="margin-bottom: 35px;">
+        <h2 style="font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 12px;">
+            <i class="fas fa-shipping-fast" style="color: #3b82f6;"></i> Monitoramento Logístico
+        </h2>
+        <p style="color: #64748b; margin-top: 5px;">Gerencie cancelamentos e rastreie retornos de mercadorias com prazos de cobrança.</p>
+    </div>
+
+    <div class="card" style="border-radius: 20px; border: none; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); margin-bottom: 40px; background: white;">
+        <div class="card-header" style="background: transparent; border-bottom: 1px solid #f1f5f9; padding: 20px 30px;">
+            <h5 style="margin: 0; font-weight: 700; color: #334155;"><i class="fas fa-plus-circle" style="color: #10b981;"></i> Registrar Nova Ocorrência</h5>
+        </div>
+        <div class="card-body" style="padding: 30px;">
+            <form action="{{ url_for('gerenciar_pendencias') }}" method="POST">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                    
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Tipo de Ocorrência</label>
+                        <select name="tipo" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" required>
+                            <option value="Cancelamento">Cancelamento (Cobrar Reembolso)</option>
+                            <option value="Troca">Troca SP (Aguardar Retorno)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">ID do Pedido</label>
+                        <input type="text" name="pedido_id" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" placeholder="Ex: 2602206..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Marketplace / Canal</label>
+                        <select name="marketplace" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" required>
+                            <option value="" disabled selected>Selecione...</option>
+                            <option value="Mercado Livre">Mercado Livre</option>
+                            <option value="Shopee">Shopee</option>
+                            <option value="Magalu">Magalu</option>
+                            <option value="Loja Virtual">Loja Virtual</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Data de Revisão</label>
+                        <input type="date" name="prazo_limite" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" value="{{ hoje }}" required>
+                    </div>
+
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 20px; margin-top: 20px;">
+                    
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Remessa / Rastreio</label>
+                        <input type="text" name="codigo_rastreio" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" placeholder="Ex: FLEX-98237">
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Nº Protocolo</label>
+                        <input type="text" name="protocolo" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" placeholder="Ex: 23455678">
+                    </div>
+
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Anotações</label>
+                        <input type="text" name="observacao" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" placeholder="Motivo ou detalhes da cobrança...">
+                    </div>
+
+                </div>
+
+                <div style="text-align: right; margin-top: 10px;">
+                    <button type="submit" class="btn" style="background: #3b82f6; color: white; padding: 12px 40px; border-radius: 12px; font-weight: 700; transition: 0.3s; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);">
+                        <i class="fas fa-save"></i> Iniciar Monitoramento
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <h4 style="font-weight: 800; color: #1e293b; margin: 0;">Pendências em Aberto</h4>
+        <span class="badge" style="background: #e2e8f0; color: #475569; padding: 5px 12px; border-radius: 20px;">{{ pendencias|length }} ativas</span>
+    </div>
+
+    <div class="card" style="border-radius: 20px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; background: white;">
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0;">
+                <thead style="background: #f1f5f9; color: #475569; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">Ocorrência</th>
+                        <th class="border-0 py-3">Pedido / Rastreio</th>
+                        <th class="border-0 py-3">Canal / Protocolo</th>
+                        <th class="border-0 py-3 text-center">Data Limite</th>
+                        <th class="border-0 py-3 text-right px-4">Ações</th>
+                    </tr>
+                </thead>
+                <tbody style="font-size: 0.9rem;">
+                    {% for p in pendencias %}
+                    <tr style="border-bottom: 1px solid #f8fafc;">
+                        <td class="px-4">
+                            <span class="badge" style="padding: 6px 14px; border-radius: 30px; font-weight: 700; {{ 'background: #fee2e2; color: #991b1b;' if p.tipo == 'Cancelamento' else 'background: #e0f2fe; color: #075985;' }}">
+                                {{ p.tipo }}
+                            </span>
+                        </td>
+                        <td>
+                            <div style="font-weight: 800; color: #1e293b;">#{{ p.pedido_id }}</div>
+                            <small class="text-muted"><i class="fas fa-barcode"></i> {{ p.codigo_rastreio or 'N/A' }}</small>
+                        </td>
+                        <td>
+                            <div style="font-weight: 700; color: #334155;">{{ p.marketplace }}</div>
+                            <small style="color: #3b82f6; font-weight: 600;">{{ p.protocolo or 'S/ Protocolo' }}</small>
+                        </td>
+                        <td class="text-center">
+                            <div style="font-weight: 800; padding: 5px 10px; border-radius: 8px; display: inline-block; {{ 'background: #fff1f2; color: #ef4444;' if p.prazo_limite < hoje else 'background: #f0fdf4; color: #22c55e;' }}">
+                                <i class="far fa-calendar-alt"></i> {{ p.prazo_limite.strftime('%d/%m/%Y') }}
+                            </div>
+                        </td>
+                        <td class="text-right px-4">
+                            <div style="display: flex; gap: 8px; justify-content: flex-end;">
+                                <button class="btn btn-sm" style="background: #f1f5f9; color: #475569; border-radius: 8px; font-weight: 600;" onclick="document.getElementById('adiar-{{p.id}}').style.display='flex'">
+                                    <i class="fas fa-clock"></i> Adiar
+                                </button>
+                                <a href="{{ url_for('resolver_pendencia', id=p.id) }}" class="btn btn-sm" style="background: #dcfce7; color: #15803d; border-radius: 8px; font-weight: 700;">
+                                    <i class="fas fa-check"></i> Finalizar
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+
+                    <div id="adiar-{{p.id}}" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+                        <div style="background:white; padding:35px; border-radius:24px; width:400px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
+                            <h4 style="font-weight: 800; margin-bottom: 10px; color: #1e293b;">Reagendar Revisão</h4>
+                            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 25px;">Defina uma nova data para cobrar este pedido.</p>
+                            <form action="{{ url_for('adiar_pendencia', id=p.id) }}" method="POST">
+                                <input type="date" name="nova_data" class="form-control" min="{{ hoje }}" required style="height: 50px; border-radius: 12px; margin-bottom: 25px;">
+                                <div style="display:flex; gap:12px;">
+                                    <button type="button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="btn" style="flex:1; background: #f1f5f9; border-radius: 12px; font-weight: 600;">Cancelar</button>
+                                    <button type="submit" class="btn" style="flex:1; background: #3b82f6; color: white; border-radius: 12px; font-weight: 700;">Atualizar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

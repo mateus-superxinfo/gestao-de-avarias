@@ -2,80 +2,128 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Impressão de Etiquetas</title>
+    <title>Impressão de Etiquetas - LogiControl</title>
     <style>
-        body { margin: 0; padding: 0; font-family: Arial, sans-serif; background: #fff; }
-        
-        /* FORMATO 1: Zebra 4x2.5cm (2 etiquetas por item) */
-        {% if formato == 'zebra_pequena' %}
-        .etiqueta { width: 40mm; height: 25mm; padding: 2mm; border: 1px solid #eee; page-break-after: always; font-size: 8pt; box-sizing: border-box; }
-        {% endif %}
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; background: #fff; }
+        @media print { .no-print { display: none; } }
 
-        /* FORMATO 2 e 3: Zebra Grande ou A4 (Informação junta) */
-        {% if formato == 'a4_quadrupla' %}
-        /* Otimizado para 4 etiquetas lado a lado na largura da folha A4 */
-        .grid-a4 { 
-            display: grid; 
-            grid-template-columns: repeat(4, 1fr); 
-            gap: 2mm; 
-            width: 210mm; 
-            padding: 5mm; 
+        /* --- CONFIGURAÇÃO ZEBRA GRANDE (100x150mm) --- */
+        {% if formato == 'zebra_grande' %}
+        @page { size: 100mm 150mm; margin: 0; }
+        .etiqueta-wrapper { 
+            width: 100mm; 
+            height: 150mm; 
+            padding: 10mm; 
             box-sizing: border-box; 
-        }
-        .etiqueta { 
-            border: 1px solid #000; 
-            padding: 3mm; 
-            box-sizing: border-box; 
-            font-size: 7pt; /* Fonte reduzida para o novo tamanho */
-            min-height: 45mm; 
             display: flex; 
             flex-direction: column; 
+            justify-content: space-between; 
+            align-items: center; 
+            page-break-after: always; 
+            text-align: center;
+            overflow: hidden; /* Garante que nada saia da borda */
         }
-        @page { size: A4; margin: 0; }
-        {% endif %}
+        .label-id { font-size: 1.2rem; font-weight: bold; border: 2px solid #444; padding: 2px 12px; border-radius: 4px; color: #333; }
+        .label-sku { 
+            font-size: 4rem; 
+            font-weight: 900; 
+            margin: 5mm 0; 
+            border-bottom: 5px solid #000; 
+            width: 100%; 
+            letter-spacing: -1px; 
+        }
+        .label-nome { 
+            font-size: 1.6rem; 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            line-height: 1.2; 
+            flex-grow: 1; /* Faz o nome ocupar o espaço central disponível */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            word-wrap: break-word;
+            width: 100%;
+        }
+        .label-avaria { 
+            font-size: 1.3rem; 
+            font-style: italic; 
+            margin: 10mm 0; 
+            padding: 10px; 
+            background: #f9f9f9; 
+            border-radius: 8px; 
+            width: 100%;
+            border: 1px dashed #ccc;
+        }
+        .label-footer { 
+            width: 100%; 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 1.2rem; 
+            border-top: 2px solid #000; 
+            padding-top: 5mm; 
+            font-weight: bold;
+        }
 
-        {% if formato == 'zebra_grande' %}
-        .etiqueta { width: 100mm; height: 150mm; padding: 10mm; border: 1px dashed #ccc; page-break-after: always; font-size: 14pt; box-sizing: border-box; }
-        {% endif %}
-
-        .info-title { font-weight: bold; border-bottom: 1px solid #000; margin-bottom: 5px; text-align: center; font-size: 1.1em; }
+        /* --- MANUTENÇÃO DO A4 (QUE JÁ ESTÁ PERFEITO) --- */
+        {% elif formato == 'a4_quadrupla' %}
+        @page { size: A4; margin: 5mm; }
+        .container-a4 { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; height: 287mm; width: 200mm; gap: 2mm; page-break-after: always; }
+        .etiqueta-a4 { border: 1.5px dashed #000; padding: 12mm; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; box-sizing: border-box; position: relative; overflow: hidden; }
+        .a4-id { position: absolute; top: 8mm; right: 8mm; font-size: 0.8rem; font-weight: bold; color: #666; }
+        .a4-sku { font-size: 3rem; font-weight: 900; margin-bottom: 5px; }
+        .a4-nome { font-size: 1.3rem; font-weight: bold; margin-bottom: 8px; }
+        .a4-avaria { font-size: 1.1rem; color: #222; margin: 10px 0; padding: 5px; border-top: 1px solid #ddd; width: 100%; }
+        .a4-data { font-size: 0.9rem; font-weight: bold; border: 1px solid #000; padding: 2px 10px; margin-top: 10px; }
         
-        @media print {
-            .no-print { display: none; }
-            .etiqueta { border: 1px solid #ddd !important; } /* Borda leve para guiar o corte */
-        }
+        {% else %}
+        @page { size: 40mm 25mm; margin: 0; }
+        .etiqueta-wrapper { width: 40mm; height: 25mm; padding: 2mm; box-sizing: border-box; page-break-after: always; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .label-sku { font-size: 1rem; font-weight: bold; }
+        {% endif %}
     </style>
 </head>
-<body onload="window.print()">
-    <div class="{{ 'grid-a4' if formato == 'a4_quadrupla' else '' }}">
-        {% for p in produtos %}
-            {% if formato == 'zebra_pequena' %}
-                <div class="etiqueta">
-                    <p><strong>ID: {{ p.id }}</strong> | SKU: {{ p.sku }}</p>
-                    <p>{{ p.nome_produto[:40] }}</p>
-                </div>
-                <div class="etiqueta">
-                    <p><strong>ID: {{ p.id }}</strong> | AVARIA:</p>
-                    <p>{{ p.descricao_avaria }}</p>
-                </div>
-            {% else %}
-                <div class="etiqueta" style="border: 2px solid #000; height: auto; min-height: 100mm; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div>
-                        <h2 style="margin: 0; border-bottom: 2px solid #000; text-align:center;">ID: {{ p.id }}</h2>
-                        <div style="font-size: 1.4em; margin: 15px 0;">
-                            <p><strong>SKU:</strong> {{ p.sku }}</p>
-                            <p><strong>PRODUTO:</strong> {{ p.nome_produto }}</p>
-                            <p><strong>MARCA:</strong> {{ p.fornecedor }} | <strong>MOD:</strong> {{ p.modelo }}</p>
-                            <p><strong>ENTRADA:</strong> {{ p.data_entrada.strftime('%d/%m/%Y') }}</p>
-                        </div>
-                    </div>
-                    <div style="border-top: 2px dashed #000; padding-top: 15px; margin-top: 20px;">
-                        <p style="font-size: 1.2em;"><strong>MOTIVO / DESCRIÇÃO DA AVARIA:</strong></p>
-                        <p style="font-size: 1.3em; font-style: italic;">{{ p.descricao_avaria }}</p>
-                    </div>
-                </div>
-            {% endif %}
-        {% endfor %}
+<body>
+    <div class="no-print" style="padding: 15px; background: #2563eb; color: white; text-align: center;">
+        <button onclick="window.print()" style="padding: 12px 60px; cursor: pointer; background: #fff; color: #2563eb; border: none; border-radius: 8px; font-weight: bold; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+            🖨️ IMPRIMIR ETIQUETAS
+        </button>
     </div>
+
+    {% if formato == 'a4_quadrupla' %}
+        {% for i in range(0, produtos|length, 4) %}
+            <div class="container-a4">
+                {% for p in produtos[i:i+4] %}
+                    <div class="etiqueta-a4">
+                        <div class="a4-id">ID: #{{ p.id }}</div>
+                        <div class="a4-sku">{{ p.sku }}</div>
+                        <div class="a4-nome">{{ p.nome_produto[:75] }}</div>
+                        <div class="a4-avaria"><strong>Motivo:</strong> {{ p.descricao_avaria or 'N/A' }}</div>
+                        <div style="font-size: 1rem;">{{ p.fornecedor }}</div>
+                        <div class="a4-data">Entrada: {{ p.data_entrada.strftime('%d/%m/%Y') }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endfor %}
+    {% else %}
+        {% for p in produtos %}
+            <div class="etiqueta-wrapper">
+                <div class="label-id">ID: #{{ p.id }}</div>
+                <div class="label-sku">{{ p.sku }}</div>
+                
+                <div class="label-nome">
+                    <span>{{ p.nome_produto }}</span> </div>
+                
+                <div class="label-avaria">
+                    <strong>Problema:</strong><br>
+                    {{ p.descricao_avaria or 'Não informado' }}
+                </div>
+
+                <div class="label-footer">
+                    <span>{{ p.fornecedor }}</span>
+                    <span>{{ p.data_entrada.strftime('%d/%m/%Y') }}</span>
+                </div>
+            </div>
+        {% endfor %}
+    {% endif %}
 </body>
 </html>

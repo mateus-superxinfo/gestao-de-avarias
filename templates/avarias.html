@@ -6,12 +6,53 @@
     .form-label { font-size: 0.75rem; font-weight: 700; color: #64748b; text-transform: uppercase; display: block; margin-bottom: 4px; }
     .form-input { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; margin-bottom: 12px; box-sizing: border-box; }
     .section-title { font-size: 1rem; font-weight: 800; margin: 30px 0 15px 0; border-bottom: 2px solid #eee; padding-bottom: 5px; display: flex; align-items: center; gap: 10px; }
-    .lote-card { background: white; border-radius: 10px; border: 2px solid #f59e0b; overflow: hidden; margin-bottom: 25px; }
-    .lote-header { background: #f59e0b; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
-    .btn-action { padding: 8px 15px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; cursor: pointer; border: none; transition: 0.2s; }
+    
+    /* ESTILO UNIFICADO DOS CARDS EXPANSÍVEIS */
+    .lote-card {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 15px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+
+    .lote-header {
+        background: #2563eb; /* Azul padrão LogiControl */
+        color: white;
+        padding: 12px 20px;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: background 0.3s;
+        user-select: none;
+    }
+
+    .lote-header:hover { background: #1d4ed8; }
+
+    /* Estilo para lotes finalizados (diferenciação visual sutil) */
+    .lote-header.finalizado { background: #16a34a; }
+    .lote-header.finalizado:hover { background: #15803d; }
+
+    .lote-body {
+        display: none; /* Inicia minimizado por padrão */
+        padding: 20px;
+        border-top: 1px solid #e2e8f0;
+        animation: slideDown 0.3s ease-out;
+    }
+
     .table-items { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
     .table-items th { background: #f8fafc; padding: 10px; text-align: left; color: #64748b; border-bottom: 1px solid #eee; }
     .table-items td { padding: 12px 10px; border-bottom: 1px solid #f1f5f9; }
+
+    .fa-chevron-down { transition: transform 0.3s ease; }
+    .active .fa-chevron-down { transform: rotate(180deg); }
+
+    @keyframes slideDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
 </style>
 
 <div class="avaria-container">
@@ -36,75 +77,133 @@
             </select>
             <label class="form-label">Descrição</label>
             <textarea name="descricao_avaria" class="form-input" style="height:70px;"></textarea>
-            <button type="submit" class="btn-action" style="background:#2563eb; color:white; width:100%;">Cadastrar Item</button>
+            <button type="submit" class="btn-action" style="background:#2563eb; color:white; width:100%; padding:12px; border:none; border-radius:6px; font-weight:bold; cursor:pointer;">Cadastrar Item</button>
         </form>
     </aside>
 
     <main>
-        <div class="section-title" style="color:#ef4444;"><i class="fas fa-layer-group"></i> Pendentes por Categoria</div>
+        <div class="section-title" style="color:#ef4444;"><i class="fas fa-layer-group"></i> Pendentes por Categoria (Identificação Imediata)</div>
+
         {% for (fornecedor, tipo), produtos in produtos_pendentes.items() %}
-            <div style="background:white; padding:15px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; border:1px solid #e2e8f0;">
-                <span><strong>{{ fornecedor }}</strong> - {{ tipo }} ({{ produtos|length }} itens)</span>
-                <form action="{{ url_for('criar_lote', fornecedor_nome=fornecedor, tipo_lote=tipo) }}" method="POST">
-                    <button type="submit" class="btn-action" style="background:#2563eb; color:white;">Gerar Lote</button>
-                </form>
+            <div class="lote-card" style="border-color: #fca5a5;">
+                <div class="lote-header" style="background: #ef4444;" onclick="toggleLote(this)">
+                    <div>
+                        <strong>{{ fornecedor }}</strong> - {{ tipo }} 
+                        <span style="font-size: 0.8rem; margin-left: 10px; opacity: 0.9;">({{ produtos|length }} itens aguardando identificação)</span>
+                    </div>
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+
+                <div class="lote-body">
+                    <form action="{{ url_for('imprimir_etiquetas') }}" method="POST" target="_blank">
+                        <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center; background:#fff5f5; padding:10px; border-radius:8px; border:1px solid #feb2b2;">
+                            <label style="font-size: 0.75rem; font-weight: bold;">Formato:</label>
+                            <select name="formato" class="form-input" style="margin:0; width:auto; padding:5px;">
+                                <option value="zebra_grande">Zebra Grande (10x15cm)</option>
+                                <option value="a4_quadrupla">Folha A4 (4 p/ folha)</option>
+                                <option value="zebra_pequena">Zebra Pequena</option>
+                            </select>
+                            <button type="submit" style="background:#ef4444; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:0.75rem; font-weight:bold;">
+                                <i class="fas fa-print"></i> Imprimir Etiquetas Selecionadas
+                            </button>
+                        </div>
+
+                        <table class="table-items" style="margin-bottom: 15px;">
+                            <thead>
+                                <tr>
+                                    <th width="30"><input type="checkbox" onclick="toggleAll(this, 'pendente-{{ loop.index }}')"></th>
+                                    <th>SKU</th>
+                                    <th>Produto</th>
+                                    <th>Avaria</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pendente-{{ loop.index }}">
+                                {% for p in produtos %}
+                                <tr>
+                                    <td><input type="checkbox" name="produtos_ids" value="{{ p.id }}"></td>
+                                    <td><strong>{{ p.sku }}</strong></td>
+                                    <td>{{ p.nome_produto }}</td>
+                                    <td style="font-style: italic; color: #666;">{{ p.descricao_avaria }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </form>
+
+                    <div style="display: flex; justify-content: flex-end; padding-top: 10px; border-top: 1px dashed #fca5a5;">
+                        <form action="{{ url_for('criar_lote', fornecedor_nome=fornecedor, tipo_lote=tipo) }}" method="POST">
+                            <button type="submit" style="background:#475569; color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer; font-weight:bold; font-size:0.75rem;">
+                                <i class="fas fa-box-open"></i> Criar Lote de Tratativa
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
         {% endfor %}
 
         <div class="section-title" style="color:#f59e0b;"><i class="fas fa-hourglass-start"></i> Lotes em Tratativa (Urgência)</div>
         {% for lote in lotes_andamento %}
         <div class="lote-card">
-            <div class="lote-header">
-                <strong>LOTE #{{ lote.id }} | {{ lote.fornecedor_nome }}</strong>
-                <form action="{{ url_for('resetar_lote', lote_id=lote.id) }}" method="POST">
-                    <button type="submit" class="btn-action" style="background:#475569; color:white;">Reiniciar</button>
-                </form>
+            <div class="lote-header" onclick="toggleLote(this)">
+                <div>
+                    <strong>LOTE #{{ lote.id }} | {{ lote.fornecedor_nome }}</strong>
+                    <span style="font-size:0.8rem; margin-left:10px; opacity:0.8;">({{ lote.produtos|length }} itens)</span>
+                </div>
+                <i class="fas fa-chevron-down"></i>
             </div>
             
-            <form action="{{ url_for('imprimir_etiquetas') }}" method="POST" target="_blank"style="padding:20px;">
-                <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center; background:#f8fafc; padding:10px; border-radius:8px;">
-                    <label style="font-size: 0.8rem; font-weight: bold;">Formato:</label>
-                    <select name="formato" class="form-input" style="margin:0; width:auto;">
-                        <option value="zebra_pequena">Zebra Pequena (4x2.5cm - 2 p/ item)</option>
-                        <option value="zebra_grande">Zebra Grande (10x15cm - Juntas)</option>
-                        <option value="a4_quadrupla">Folha A4 (4 etiquetas p/ folha)</option>
-                    </select>
-                    <button type="submit" class="btn-action" style="background:#2563eb; color:white;"><i class="fas fa-print"></i> Imprimir Selecionados</button>
+            <div class="lote-body">
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <form action="{{ url_for('resetar_lote', lote_id=lote.id) }}" method="POST">
+                        <button type="submit" style="background:#475569; color:white; border:none; padding:5px 12px; border-radius:4px; font-size:0.75rem; cursor:pointer;">Desfazer Lote</button>
+                    </form>
                 </div>
 
-                <table class="table-items">
-                    <thead><tr><th width="30"><input type="checkbox" onclick="toggleAll(this, 'lote-{{lote.id}}')"></th><th>Identificação</th><th>Avaria</th><th>Ações</th></tr></thead>
-                    <tbody id="lote-{{lote.id}}">
-                        {% for p in lote.produtos %}
-                        <tr>
-                            <td><input type="checkbox" name="produtos_ids" value="{{ p.id }}"></td>
-                            <td><strong>{{ p.sku }}</strong><br><small>{{ p.nome_produto }}</small></td>
-                            <td>{{ p.descricao_avaria }}</td>
-                            <td align="right">
-                                <form action="{{ url_for('excluir_produto', produto_id=p.id) }}" method="POST">
-                                    <button type="submit" style="color:#ef4444; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </form>
-
-            <div style="padding:0 20px 20px 20px;">
-                <form action="{{ url_for('resolver_lote', lote_id=lote.id) }}" method="POST" style="display:grid; grid-template-columns: 1fr 1fr 1.5fr; gap:15px;">
-                    <div><label class="form-label">Tipo de NF</label><select name="nf_tipo" class="form-input"><option value="Devolução" {{ 'selected' if lote.nf_tipo == 'Devolução' }}>Devolução</option><option value="Remessa" {{ 'selected' if lote.nf_tipo == 'Remessa' }}>Remessa</option></select></div>
-                    <div><label class="form-label">Nº Notas</label><input type="text" name="nf_numero" value="{{ lote.nf_numero or '' }}" class="form-input" placeholder="Ex: 101, 102"></div>
-                    <div><label class="form-label">Resolução</label><input type="text" name="tipo_resolucao" value="{{ lote.tipo_resolucao or '' }}" class="form-input" placeholder="Definir status..."></div>
-                    <div style="grid-column: span 3; display:flex; justify-content:space-between; align-items:center;">
-                        <a href="{{ url_for('detalhes_lote', lote_id=lote.id) }}" target="_blank" style="font-size:0.8rem; color:#2563eb; font-weight:bold;"><i class="fas fa-file-pdf"></i> Romaneio A4</a>
-                        <div>
-                            <button type="submit" class="btn-action" style="background:#2563eb; color:white;">Salvar Info</button>
-                            <button form="finish-{{lote.id}}" type="submit" class="btn-action" style="background:#22c55e; color:white; margin-left:10px;">Finalizar e Enviar</button>
-                        </div>
+                <form action="{{ url_for('imprimir_etiquetas') }}" method="POST" target="_blank">
+                    <div style="display:flex; gap:10px; margin-bottom:15px; align-items:center; background:#f8fafc; padding:10px; border-radius:8px; border:1px solid #e2e8f0;">
+                        <label style="font-size: 0.75rem; font-weight: bold;">Formato Etiqueta:</label>
+                        <select name="formato" class="form-input" style="margin:0; width:auto; padding:5px;">
+                            <option value="zebra_pequena">Zebra Pequena (4x2.5cm)</option>
+                            <option value="zebra_grande">Zebra Grande (10x15cm)</option>
+                            <option value="a4_quadrupla">Folha A4 (4 p/ folha)</option>
+                        </select>
+                        <button type="submit" style="background:#2563eb; color:white; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:0.75rem;"><i class="fas fa-print"></i> Imprimir Selecionados</button>
                     </div>
+
+                    <table class="table-items">
+                        <thead><tr><th width="30"><input type="checkbox" onclick="toggleAll(this, 'lote-{{lote.id}}')"></th><th>Identificação</th><th>Avaria</th><th>Ações</th></tr></thead>
+                        <tbody id="lote-{{lote.id}}">
+                            {% for p in lote.produtos %}
+                            <tr>
+                                <td><input type="checkbox" name="produtos_ids" value="{{ p.id }}"></td>
+                                <td><strong>{{ p.sku }}</strong><br><small>{{ p.nome_produto }}</small></td>
+                                <td>{{ p.descricao_avaria }}</td>
+                                <td align="right">
+                                    <form action="{{ url_for('excluir_produto', produto_id=p.id) }}" method="POST" onsubmit="return confirm('Excluir item?')">
+                                        <button type="submit" style="color:#ef4444; border:none; background:none; cursor:pointer;"><i class="fas fa-trash"></i></button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
                 </form>
-                <form id="finish-{{lote.id}}" action="{{ url_for('enviar_para_resultado', lote_id=lote.id) }}" method="POST"></form>
+
+                <div style="margin-top:20px; padding-top:20px; border-top:1px solid #eee;">
+                    <form action="{{ url_for('resolver_lote', lote_id=lote.id) }}" method="POST" style="display:grid; grid-template-columns: 1fr 1fr 1.5fr; gap:15px;">
+                        <div><label class="form-label">Tipo de NF</label><select name="nf_tipo" class="form-input"><option value="Devolução" {{ 'selected' if lote.nf_tipo == 'Devolução' }}>Devolução</option><option value="Remessa" {{ 'selected' if lote.nf_tipo == 'Remessa' }}>Remessa</option></select></div>
+                        <div><label class="form-label">Nº Notas</label><input type="text" name="nf_numero" value="{{ lote.nf_numero or '' }}" class="form-input" placeholder="Ex: 101, 102"></div>
+                        <div><label class="form-label">Resolução</label><input type="text" name="tipo_resolucao" value="{{ lote.tipo_resolucao or '' }}" class="form-input" placeholder="Definir status..."></div>
+                        <div style="grid-column: span 3; display:flex; justify-content:space-between; align-items:center;">
+                            <a href="{{ url_for('detalhes_lote', lote_id=lote.id) }}" target="_blank" style="font-size:0.8rem; color:#2563eb; font-weight:bold;"><i class="fas fa-file-pdf"></i> Visualizar Romaneio A4</a>
+                            <div>
+                                <button type="submit" style="background:#64748b; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Salvar Dados</button>
+                                <button form="finish-{{lote.id}}" type="submit" style="background:#22c55e; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold; margin-left:10px;">Enviar p/ Resultado</button>
+                            </div>
+                        </div>
+                    </form>
+                    <form id="finish-{{lote.id}}" action="{{ url_for('enviar_para_resultado', lote_id=lote.id) }}" method="POST"></form>
+                </div>
             </div>
         </div>
         {% endfor %}
@@ -112,116 +211,84 @@
         <div class="section-title" style="color:#2563eb;"><i class="fas fa-paper-plane"></i> Aguardando Resultado do Fornecedor</div>
         {% for lote in lotes_aguardando %}
         <div class="lote-card" style="border-color:#2563eb;">
-            <div class="lote-header" style="background:#2563eb;">
-                <strong>LOTE #{{ lote.id }} | {{ lote.fornecedor_nome }}</strong>
-                <span>{{ lote.nf_tipo }}: {{ lote.nf_numero }}</span>
+            <div class="lote-header" onclick="toggleLote(this)">
+                <div>
+                    <strong>LOTE #{{ lote.id }} | {{ lote.fornecedor_nome }}</strong>
+                    <span style="font-size:0.8rem; margin-left:10px; opacity:0.8;">{{ lote.nf_tipo }}: {{ lote.nf_numero }}</span>
+                </div>
+                <i class="fas fa-chevron-down"></i>
             </div>
-            <div style="padding:15px;">
+            <div class="lote-body">
                 <table class="table-items" style="margin-bottom:15px;">
-                    {% for p in lote.produtos %}
-                    <tr><td><strong>{{ p.sku }}</strong></td><td>{{ p.nome_produto }}</td><td>{{ p.descricao_avaria }}</td></tr>
-                    {% endfor %}
+                    <thead><tr><th>SKU</th><th>Produto</th><th>Avaria</th></tr></thead>
+                    <tbody>
+                        {% for p in lote.produtos %}
+                        <tr><td><strong>{{ p.sku }}</strong></td><td>{{ p.nome_produto }}</td><td>{{ p.descricao_avaria }}</td></tr>
+                        {% endfor %}
+                    </tbody>
                 </table>
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span>Status: <strong>{{ lote.tipo_resolucao }}</strong></span>
+                <div style="display:flex; justify-content:space-between; align-items:center; background:#f0f9ff; padding:15px; border-radius:8px; border:1px solid #bae6fd;">
+                    <span>Resolução Atual: <strong>{{ lote.tipo_resolucao }}</strong></span>
                     <form action="{{ url_for('concluir_lote_final', lote_id=lote.id) }}" method="POST">
-                        <button type="submit" class="btn-action" style="background:#22c55e; color:white;">Concluir e Arquivar</button>
+                        <button type="submit" style="background:#22c55e; color:white; border:none; padding:10px 20px; border-radius:6px; cursor:pointer; font-weight:bold;">Finalizar e Arquivar</button>
                     </form>
                 </div>
             </div>
         </div>
         {% endfor %}
 
-        <div class="section-title" style="color:var(--success);">
-            <i class="fas fa-check-circle"></i> Histórico de Concluídos (Clique para ver detalhes)
-        </div>
-
+        <div class="section-title" style="color:#16a34a;"><i class="fas fa-check-circle"></i> Histórico de Concluídos</div>
         {% for lote in lotes_finalizados %}
-        <div class="lote-card" style="border-left: 6px solid var(--success); border-color: #e2e8f0; margin-bottom: 12px;">
-            <div style="padding: 15px 20px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; background: white;" 
-                onclick="toggleHistorico('hist-{{lote.id}}', this)">
+        <div class="lote-card">
+            <div class="lote-header finalizado" onclick="toggleLote(this)">
                 <div>
-                    <span style="color: var(--text-muted); font-weight: bold; font-size: 0.8rem;">#{{ lote.id }}</span>
-                    <strong style="margin-left: 10px; font-size: 1rem;">{{ lote.fornecedor_nome }}</strong>
-                    <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 15px;">
-                        <i class="far fa-calendar-alt"></i> {{ lote.data_criacao.strftime('%d/%m/%Y') }}
-                    </span>
+                    <strong>#{{ lote.id }} | {{ lote.fornecedor_nome }}</strong>
+                    <span style="font-size:0.8rem; margin-left:15px; opacity:0.9;"><i class="far fa-calendar-alt"></i> {{ lote.data_criacao.strftime('%d/%m/%Y') }}</span>
                 </div>
-                <div style="display: flex; align-items: center; gap: 15px;">
-                    <span class="badge-status" style="background: #dcfce7; color: #166534; font-weight: 800; padding: 4px 12px; border-radius: 20px; font-size: 0.75rem;">
-                        {{ lote.tipo_resolucao.upper() }}
-                    </span>
-                    <i class="fas fa-chevron-down" style="color: #64748b; transition: 0.3s;"></i>
+                <div style="display:flex; align-items:center; gap:15px;">
+                    <span style="background:rgba(255,255,255,0.2); padding:2px 10px; border-radius:10px; font-size:0.7rem; font-weight:bold;">{{ lote.tipo_resolucao.upper() }}</span>
+                    <i class="fas fa-chevron-down"></i>
                 </div>
             </div>
             
-            <div id="hist-{{lote.id}}" style="display: none; padding: 0 20px 20px 20px; border-top: 1px solid #f1f5f9; background: #fafafa;">
-                <table class="table-items" style="margin-top: 15px; background: white; border-radius: 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
-                    <thead>
-                        <tr style="background: #f8fafc;">
-                            <th style="padding: 10px; text-align: left; font-size: 0.75rem; color: #64748b;">SKU / EAN</th>
-                            <th style="padding: 10px; text-align: left; font-size: 0.75rem; color: #64748b;">PRODUTO</th>
-                            <th style="padding: 10px; text-align: left; font-size: 0.75rem; color: #64748b;">AVARIA RELATADA</th>
-                        </tr>
-                    </thead>
+            <div class="lote-body" style="background:#fafafa;">
+                <table class="table-items" style="background:white; border-radius:8px; overflow:hidden; border:1px solid #eee;">
+                    <thead><tr style="background:#f8fafc;"><th>SKU / EAN</th><th>PRODUTO</th><th>AVARIA</th></tr></thead>
                     <tbody>
                         {% for p in lote.produtos %}
-                        <tr>
-                            <td style="padding: 12px 10px; border-bottom: 1px solid #f1f5f9;"><strong>{{ p.sku }}</strong></td>
-                            <td style="padding: 12px 10px; border-bottom: 1px solid #f1f5f9;">{{ p.nome_produto }}</td>
-                            <td style="padding: 12px 10px; border-bottom: 1px solid #f1f5f9; color: #64748b; font-style: italic;">
-                                {{ p.descricao_avaria or 'Não informada' }}
-                            </td>
-                        </tr>
+                        <tr><td><strong>{{ p.sku }}</strong></td><td>{{ p.nome_produto }}</td><td style="color:#64748b; font-style:italic;">{{ p.descricao_avaria or 'N/A' }}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
-
-                <div style="margin-top: 15px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px; background: #f0fdf4; border-radius: 8px; border: 1px solid #bbf7d0;">
-                    <div>
-                        <label style="display:block; font-size:0.65rem; font-weight:800; color:#166534; text-transform:uppercase;">Tipo de NF</label>
-                        <span style="font-size:0.9rem;">{{ lote.nf_tipo or 'N/A' }}</span>
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.65rem; font-weight:800; color:#166534; text-transform:uppercase;">Nº da Nota</label>
-                        <span style="font-size:0.9rem;">{{ lote.nf_numero or 'N/A' }}</span>
-                    </div>
-                    <div>
-                        <label style="display:block; font-size:0.65rem; font-weight:800; color:#166534; text-transform:uppercase;">Resolução Final</label>
-                        <span style="font-size:0.9rem; font-weight:bold;">{{ lote.tipo_resolucao }}</span>
-                    </div>
+                <div style="margin-top:15px; display:grid; grid-template-columns: repeat(3, 1fr); gap:15px; padding:15px; background:#f0fdf4; border-radius:8px; border:1px solid #bbf7d0;">
+                    <div><small style="color:#166534; font-weight:800; text-transform:uppercase; font-size:0.6rem;">NF Tipo</small><br>{{ lote.nf_tipo or 'N/A' }}</div>
+                    <div><small style="color:#166534; font-weight:800; text-transform:uppercase; font-size:0.6rem;">Nº Nota</small><br>{{ lote.nf_numero or 'N/A' }}</div>
+                    <div><small style="color:#166534; font-weight:800; text-transform:uppercase; font-size:0.6rem;">Resolução Final</small><br><strong>{{ lote.tipo_resolucao }}</strong></div>
                 </div>
             </div>
         </div>
         {% else %}
-        <div class="card" style="text-align: center; color: #94a3b8; padding: 30px;">
-            <p>Ainda não existem lotes finalizados no histórico.</p>
-        </div>
+        <div style="text-align:center; padding:40px; color:#94a3b8; background:white; border-radius:12px; border:1px dashed #cbd5e1;">Nenhum lote finalizado encontrado.</div>
         {% endfor %}
-
-        <script>
-        function toggleHistorico(id, header) {
-            const content = document.getElementById(id);
-            const icon = header.querySelector('.fa-chevron-down, .fa-chevron-up');
-            
-            if (content.style.display === "none") {
-                content.style.display = "block";
-                icon.classList.replace('fa-chevron-down', 'fa-chevron-up');
-                header.style.background = "#f8fafc";
-            } else {
-                content.style.display = "none";
-                icon.classList.replace('fa-chevron-up', 'fa-chevron-down');
-                header.style.background = "white";
-            }
-        }
-        </script>
     </main>
 </div>
 
 <script>
+    // Função para minimizar/maximizar os lotes
+    function toggleLote(header) {
+        header.classList.toggle('active');
+        const body = header.nextElementSibling;
+        if (body.style.display === "block") {
+            body.style.display = "none";
+        } else {
+            body.style.display = "block";
+        }
+    }
+
+    // Função para marcar/desmarcar todos os itens do lote
     function toggleAll(source, targetId) {
-        checkboxes = document.querySelectorAll('#' + targetId + ' input[type="checkbox"]');
-        for(var i=0; i<checkboxes.length; i++) checkboxes[i].checked = source.checked;
+        const checkboxes = document.querySelectorAll('#' + targetId + ' input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = source.checked);
     }
 </script>
 {% endblock %}

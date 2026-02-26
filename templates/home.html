@@ -11,7 +11,160 @@
     
     .form-label { font-size: 0.8rem; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 5px; }
     .form-control { width: 100%; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; margin-bottom: 15px; font-family: inherit; }
+
+    .kpi-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+    .kpi-card-biz { background: #fff; padding: 20px; border-radius: 12px; border-left: 5px solid var(--primary); box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .kpi-card-biz h4 { font-size: 0.75rem; color: #64748b; text-transform: uppercase; margin: 0 0 10px 0; }
+    .kpi-value { font-size: 1.5rem; font-weight: 800; color: #1e293b; }
+    .kpi-sub { font-size: 0.75rem; margin-top: 5px; font-weight: bold; }
 </style>
+
+<div style="display: flex; justify-content: flex-end; margin-bottom: 10px;">
+    <div style="padding: 8px 15px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; display: flex; align-items: center; gap: 8px;
+        {% if status_backup == 'success' %} background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0;
+        {% elif status_backup == 'warning' %} background: #fffbeb; color: #92400e; border: 1px solid #fde68a;
+        {% else %} background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; {% endif %}">
+        
+        <i class="fas fa-cloud-check"></i>
+        Último Backup: {{ last_backup }}
+        
+        {% if status_backup != 'success' %}
+            <a href="{{ url_for('executar_backup') }}" style="color: inherit; text-decoration: underline; margin-left: 5px;">
+                Fazer agora?
+            </a>
+        {% endif %}
+    </div>
+</div>
+
+{% if current_user.role == 'gestor' and fin %}
+<div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px rgba(0,0,0,0.02);">
+    
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 15px; padding-bottom: 15px; border-bottom: 1px solid #f1f5f9; align-items: center;">
+        <div>
+            <h5 style="margin: 0; color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Fat. Mês ({{ hoje.strftime('%m/%y') }})</h5>
+            <span style="font-size: 1rem; font-weight: 800; color: #1e293b;">R$ {{ "{:,.2f}".format(fin.faturamento) }}</span>
+        </div>
+        <div>
+            <h5 style="margin: 0; color: #f59e0b; font-size: 0.65rem; text-transform: uppercase;">Previsão Fechamento</h5>
+            <span style="font-size: 1rem; font-weight: 800; color: #f59e0b;">R$ {{ "{:,.2f}".format(fin.fat_previsao) }}</span>
+        </div>
+        <div>
+            <h5 style="margin: 0; color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Mês Anterior</h5>
+            <span style="font-size: 1rem; font-weight: 700; color: #475569;">R$ {{ "{:,.2f}".format(fin.fat_anterior) }}</span>
+        </div>
+        <div>
+            <h5 style="margin: 0; color: #2563eb; font-size: 0.65rem; text-transform: uppercase;">Acumulado 2026</h5>
+            <span style="font-size: 1rem; font-weight: 700; color: #2563eb;">R$ {{ "{:,.2f}".format(fin.fat_acumulado) }}</span>
+        </div>
+        <div style="text-align: right;">
+            <h5 style="margin: 0; color: #64748b; font-size: 0.65rem; text-transform: uppercase;">% vs Total 2025</h5>
+            <span style="font-size: 0.85rem; font-weight: bold; color: #22c55e;">{{ fin.fat_vs_2025 }}% atingido</span>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr 1fr; gap: 15px; padding-top: 15px; align-items: center;">
+        <div>
+            <h5 style="margin: 0; color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Pedidos Mês</h5>
+            <span style="font-size: 1rem; font-weight: 800; color: #1e293b;">{{ fin.pedidos }}</span>
+        </div>
+        <div>
+            <h5 style="margin: 0; color: #f59e0b; font-size: 0.65rem; text-transform: uppercase;">Previsão Pedidos</h5>
+            <span style="font-size: 1rem; font-weight: 800; color: #f59e0b;">{{ fin.ped_previsao }}</span>
+        </div>
+        <div>
+            <h5 style="margin: 0; color: #64748b; font-size: 0.65rem; text-transform: uppercase;">Mês Anterior</h5>
+            <span style="font-size: 1rem; font-weight: 700; color: #475569;">{{ fin.ped_anterior }}</span>
+        </div>
+        <div>
+            <h5 style="margin: 0; color: #2563eb; font-size: 0.65rem; text-transform: uppercase;">Acumulado 2026</h5>
+            <span style="font-size: 1rem; font-weight: 700; color: #2563eb;">{{ fin.ped_acumulado }}</span>
+        </div>
+        <div style="text-align: right;">
+            <h5 style="margin: 0; color: #64748b; font-size: 0.65rem; text-transform: uppercase;">% Pedidos vs 2025</h5>
+            <span style="font-size: 0.85rem; font-weight: bold; color: #3b82f6;">{{ fin.ped_vs_2025 }}% atingido</span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if alertas_log and (alertas_log.cancelados > 0 or alertas_log.trocas > 0) %}
+<div style="display: flex; gap: 15px; margin-bottom: 25px;">
+    {% if alertas_log.cancelados > 0 %}
+    <a href="{{ url_for('gerenciar_pendencias') }}" style="flex: 1; text-decoration: none; background: #fff5f5; border: 1px solid #feb2b2; padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-undo-alt" style="color: #c53030;"></i>
+        <div>
+            <span style="display:block; color: #c53030; font-weight: bold; font-size: 0.9rem;">{{ alertas_log.cancelados }} Cancelamentos Pendentes</span>
+            <small style="color: #9b2c2c;">Cobrar reembolsos pendentes no marketplace</small>
+        </div>
+    </a>
+    {% endif %}
+
+    {% if alertas_log.trocas > 0 %}
+    <a href="{{ url_for('gerenciar_pendencias') }}" style="flex: 1; text-decoration: none; background: #f0f9ff; border: 1px solid #bee3f8; padding: 12px; border-radius: 8px; display: flex; align-items: center; gap: 10px;">
+        <i class="fas fa-truck-loading" style="color: #2b6cb0;"></i>
+        <div>
+            <span style="display:block; color: #2b6cb0; font-weight: bold; font-size: 0.9rem;">{{ alertas_log.trocas }} Trocas SP em Trânsito</span>
+            <small style="color: #2c5282;">Confirmar se retornaram para o estoque</small>
+        </div>
+    </a>
+    {% endif %}
+</div>
+{% endif %}
+
+<div class="dashboard-rotina">
+    
+    {% set rotina_total = tarefas|selectattr('recurrence', 'equalto', 'diaria')|list|length %}
+    {% set rotina_feita = tarefas|selectattr('recurrence', 'equalto', 'diaria')|selectattr('is_completed', 'equalto', True)|list|length %}
+    {% set progresso = (rotina_feita / rotina_total * 100)|round|int if rotina_total > 0 else 0 %}
+
+    <div style="background: white; padding: 20px; border-radius: 12px; margin-bottom: 25px; box-shadow: var(--shadow);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <h3 style="margin:0;"><i class="fas fa-redo-alt" style="color: var(--primary);"></i> Minha Rotina Diária</h3>
+            <span style="font-weight: bold; color: var(--primary);">{{ progresso }}% Concluído</span>
+        </div>
+        <div style="width: 100%; background: #e2e8f0; height: 12px; border-radius: 10px; overflow: hidden;">
+            <div style="width: {{ progresso }}%; background: var(--primary); height: 100%; transition: 0.5s;"></div>
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        
+        <section>
+            <h4 style="color: #64748b; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 15px;">
+                <i class="fas fa-star" style="color: #f59e0b;"></i> Pilares do Dia (Sempre realizar)
+            </h4>
+            {% for t in tarefas if t.recurrence == 'diaria' %}
+                <div class="card-tarefa {{ 'concluida' if t.is_completed }}" style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #2563eb; display: flex; align-items: center; gap: 15px;">
+                    <a href="{{ url_for('ticar_tarefa', task_id=t.id) }}" style="color: {{ '#22c55e' if t.is_completed else '#cbd5e1' }}; font-size: 1.5rem;">
+                        <i class="fas {{ 'fa-check-circle' if t.is_completed else 'fa-circle' }}"></i>
+                    </a>
+                    <div style="flex: 1;">
+                        <strong style="display: block; {{ 'text-decoration: line-through; color: #94a3b8;' if t.is_completed }}">{{ t.title }}</strong>
+                        <small style="color: #64748b;">{{ t.description }}</small>
+                    </div>
+                </div>
+            {% endfor %}
+        </section>
+
+        <section>
+            <h4 style="color: #64748b; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 15px;">
+                <i class="fas fa-list-ul"></i> Demandas Específicas de Hoje
+            </h4>
+            {% for t in tarefas if t.recurrence != 'diaria' %}
+                <div class="card-tarefa" style="background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid #64748b; display: flex; align-items: center; gap: 15px;">
+                    <a href="{{ url_for('ticar_tarefa', task_id=t.id) }}" style="color: {{ '#22c55e' if t.is_completed else '#cbd5e1' }}; font-size: 1.2rem;">
+                        <i class="fas {{ 'fa-check-square' if t.is_completed else 'fa-square' }}"></i>
+                    </a>
+                    <div>
+                        <strong style="{{ 'text-decoration: line-through; color: #94a3b8;' if t.is_completed }}">{{ t.title }}</strong>
+                        <div style="font-size: 0.7rem; color: #ef4444; font-weight: bold;">PRAZO: {{ t.due_date.strftime('%d/%m/%Y') }}</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </section>
+
+    </div>
+</div>
 
 <div class="task-container">
     <section>
