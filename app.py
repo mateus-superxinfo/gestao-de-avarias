@@ -363,7 +363,7 @@ def home():
     total_cancelados = PendenciaLogistica.query.filter_by(tipo='Cancelamento', status='Pendente').count()
     total_trocas = PendenciaLogistica.query.filter_by(tipo='Troca', status='Pendente').count()
 
-    usuarios = User.query.all() if current_user.role == 'gestor' else []
+    usuarios = User.query.all()
 
     # Lógica de verificação do backup
     last_backup_str = "Nunca"

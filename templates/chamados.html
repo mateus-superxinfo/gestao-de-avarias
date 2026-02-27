@@ -50,6 +50,15 @@
                         <h3 style="margin:0; font-size:1.1rem;">#{{ ticket.id }} - {{ ticket.subject }}</h3>
                         <small style="color:#64748b;">Aberto em {{ ticket.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
                     </div>
+
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                    {% if ticket.status == 'Aberto' and (ticket.created_by == current_user.id or current_user.role == 'gestor') %}
+                        <form action="{{ url_for('fechar_chamado', ticket_id=ticket.id) }}" method="POST" onsubmit="return confirm('Deseja realmente finalizar este chamado?')">
+                            <button type="submit" class="btn-sm" style="background: var(--danger); color: white; border: none;">
+                                <i class="fas fa-check-double"></i> Finalizar Chamado
+                            </button>
+                        </form>
+                    {% endif %}
                     
                     {% if ticket.created_by == current_user.id or current_user.role == 'gestor' %}
                     <form action="{{ url_for('alterar_prazo_chamado', ticket_id=ticket.id) }}" method="POST" style="display:flex; align-items:center; gap:8px; background:#f1f5f9; padding:5px 10px; border-radius:8px;">

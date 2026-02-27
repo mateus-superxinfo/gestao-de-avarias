@@ -229,7 +229,6 @@
     </section>
 
     <aside>
-        {% if current_user.role == 'gestor' %}
         <div class="card">
             <h3 style="margin-top: 0;"><i class="fas fa-plus-circle"></i> Delegar Tarefa</h3>
             <form action="{{ url_for('criar_tarefa') }}" method="POST">
@@ -260,7 +259,6 @@
                 <button type="submit" class="btn-sm" style="background: var(--primary); color: white; width: 100%; padding: 12px; border-radius: 8px;">Criar Tarefa</button>
             </form>
         </div>
-        {% endif %}
     </aside>
 </div>
 {% endblock %}
