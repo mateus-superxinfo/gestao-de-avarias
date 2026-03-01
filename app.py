@@ -158,6 +158,50 @@ class PendenciaLogistica(db.Model):
     status = db.Column(db.String(20), default='Pendente')
     observacao = db.Column(db.Text)
 
+# Novos Modelos de Suprimentos
+
+class SolicitacaoCompra(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    item_nome = db.Column(db.String(150), nullable=False)
+    quantidade = db.Column(db.String(50))
+    motivo_uso = db.Column(db.String(200))
+    
+    # Rastreio de Usuários (Quem pediu, quem comprou, quem lançou)
+    solicitante_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    comprador_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    financeiro_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    
+    # Dados preenchidos no ato da Compra
+    fornecedor = db.Column(db.String(100))
+    valor = db.Column(db.Float, default=0.0)
+    prazo_estimado = db.Column(db.Date)
+    print_compra = db.Column(db.String(255)) # Nome do arquivo de imagem da compra
+    
+    # Dados preenchidos no ato do Recebimento
+    anexo_recebimento = db.Column(db.String(255)) # Foto do item que chegou
+    
+    # Controle de Status
+    status = db.Column(db.String(50), default='Pendente') # Pendente, Comprado, Recebido
+    financeiro_lancado = db.Column(db.Boolean, default=False) # Trava do financeiro
+    
+    # Log de Tempo exato
+    data_solicitacao = db.Column(db.DateTime, default=datetime.datetime.now)
+    data_compra = db.Column(db.DateTime)
+    data_recebimento = db.Column(db.DateTime)
+    
+    # Relacionamento com o Chat
+    comentarios = db.relationship('ComentarioCompra', backref='compra', lazy=True, cascade="all, delete-orphan")
+
+class ComentarioCompra(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    compra_id = db.Column(db.Integer, db.ForeignKey('solicitacao_compra.id'))
+    usuario_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+    texto = db.Column(db.Text, nullable=False)
+    data_hora = db.Column(db.DateTime, default=datetime.datetime.now)
+    
+    # Para mostrar o nome de quem comentou na tela
+    usuario = db.relationship('User', backref='comentarios_compra')
+
 # 1. Primeiro CRIAMOS o admin (sem o template_mode para evitar o erro anterior)
 admin = Admin(app, name='LogiControl Admin') 
 
@@ -383,9 +427,47 @@ def home():
                 alerta_backup = "warning" # Amarelo (Atenção)
             else:
                 alerta_backup = "danger" # Vermelho (Crítico)
+
+    # --- CÁLCULO DE CUSTOS COM SUPRIMENTOS (Mês Atual vs Mês Anterior) ---
+    ano_atual = hoje.year
+    mes_atual = hoje.month
+    
+    # Obter mês anterior (tratando a transição de Janeiro para Dezembro)
+    if mes_atual == 1:
+        mes_ant = 12
+        ano_ant = ano_atual - 1
+    else:
+        mes_ant = mes_atual - 1
+        ano_ant = ano_atual
+
+    # Busca todas as compras (apenas as que já foram compradas e têm valor)
+    compras_realizadas = SolicitacaoCompra.query.filter(SolicitacaoCompra.status != 'Pendente').all()
+    
+    gasto_mes_atual = 0.0
+    gasto_mes_anterior = 0.0
+    
+    for c in compras_realizadas:
+        if c.data_compra:
+            if c.data_compra.year == ano_atual and c.data_compra.month == mes_atual:
+                gasto_mes_atual += c.valor
+            elif c.data_compra.year == ano_ant and c.data_compra.month == mes_ant:
+                gasto_mes_anterior += c.valor
+
+    # Calcula a variação percentual
+    if gasto_mes_anterior > 0:
+        variacao_custo = ((gasto_mes_atual - gasto_mes_anterior) / gasto_mes_anterior) * 100
+    else:
+        variacao_custo = 100.0 if gasto_mes_atual > 0 else 0.0
+        
+    # Agrupa num dicionário para enviar para a Home
+    kpi_suprimentos = {
+        'atual': gasto_mes_atual,
+        'anterior': gasto_mes_anterior,
+        'variacao': round(variacao_custo, 1)
+    }
     
     return render_template('home.html', tarefas=tarefas, hoje=hoje, fin=fin, usuarios=usuarios, alertas_log={'cancelados': total_cancelados, 'trocas': total_trocas}, last_backup=last_backup_str, 
-                           status_backup=alerta_backup)
+                           status_backup=alerta_backup, kpi_suprimentos=kpi_suprimentos)
 
 @app.route('/dashboard')
 @login_required
@@ -1020,6 +1102,178 @@ def executar_backup():
         print(f"ERRO DETALHADO: {e}")
 
     return redirect(url_for('home'))
+
+# --- MÓDULO DE SUPRIMENTOS E COMPRAS ---
+
+@app.route('/suprimentos', methods=['GET', 'POST'])
+@login_required
+def suprimentos():
+    if request.method == 'POST':
+        nova_solicitacao = SolicitacaoCompra(
+            item_nome=request.form.get('item_nome'),
+            quantidade=request.form.get('quantidade'),
+            motivo_uso=request.form.get('motivo_uso'),
+            solicitante_id=current_user.id,
+            status='Pendente'
+        )
+        db.session.add(nova_solicitacao)
+        db.session.commit()
+        flash("Solicitação de compra criada com sucesso!")
+        return redirect(url_for('suprimentos'))
+    
+    # Busca todas as solicitações, das mais recentes para as mais antigas
+    solicitacoes = SolicitacaoCompra.query.order_by(SolicitacaoCompra.data_solicitacao.desc()).all()
+    return render_template('suprimentos.html', solicitacoes=solicitacoes)
+
+@app.route('/comprar_suprimento/<int:id>', methods=['POST'])
+@login_required
+def comprar_suprimento(id):
+    solicitacao = SolicitacaoCompra.query.get_or_404(id)
+    
+    # Preenche os dados da compra
+    solicitacao.fornecedor = request.form.get('fornecedor')
+    
+    # Converte o valor digitado (ex: 150,50) para formato numérico do banco
+    valor_str = request.form.get('valor', '0').replace('R$', '').replace('.', '').replace(',', '.').strip()
+    solicitacao.valor = float(valor_str) if valor_str else 0.0
+    
+    prazo = request.form.get('prazo_estimado')
+    if prazo:
+        solicitacao.prazo_estimado = datetime.datetime.strptime(prazo, '%Y-%m-%d').date()
+    
+    # Salva o print da compra, se enviado
+    arquivo = request.files.get('print_compra')
+    if arquivo and arquivo.filename:
+        filename = secure_filename(f"compra_{id}_{arquivo.filename}")
+        arquivo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        solicitacao.print_compra = filename
+        
+    solicitacao.comprador_id = current_user.id
+    solicitacao.data_compra = datetime.datetime.now()
+    solicitacao.status = 'Comprado' # Muda o status
+    
+    db.session.commit()
+    flash("Compra registrada! O solicitante já pode visualizar.")
+    return redirect(url_for('suprimentos'))
+
+# --- ETAPA 2: DETALHES, CHAT E RECEBIMENTO ---
+
+@app.route('/suprimento/<int:id>')
+@login_required
+def detalhes_suprimento(id):
+    solicitacao = SolicitacaoCompra.query.get_or_404(id)
+    # Busca quem pediu e quem comprou para exibir os nomes na tela
+    solicitante = User.query.get(solicitacao.solicitante_id)
+    comprador = User.query.get(solicitacao.comprador_id) if solicitacao.comprador_id else None
+    
+    return render_template('suprimento_detalhes.html', s=solicitacao, solicitante=solicitante, comprador=comprador)
+
+@app.route('/receber_suprimento/<int:id>', methods=['POST'])
+@login_required
+def receber_suprimento(id):
+    solicitacao = SolicitacaoCompra.query.get_or_404(id)
+    
+    # Salva a foto do produto recebido/canhoto
+    arquivo = request.files.get('anexo_recebimento')
+    if arquivo and arquivo.filename:
+        filename = secure_filename(f"recebido_{id}_{arquivo.filename}")
+        arquivo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+        solicitacao.anexo_recebimento = filename
+        
+    solicitacao.status = 'Recebido'
+    solicitacao.data_recebimento = datetime.datetime.now()
+    db.session.commit()
+    
+    # --- INTEGRAÇÃO COM SUA NOTIFICAÇÃO AQUI ---
+    # Exemplo: Notificar quem comprou que o item já chegou
+    # notif = Notificacao(usuario_id=solicitacao.comprador_id, mensagem=f"O item {solicitacao.item_nome} foi recebido!")
+    # db.session.add(notif)
+    # db.session.commit()
+    
+    flash("Recebimento confirmado e notificado!")
+    return redirect(url_for('detalhes_suprimento', id=solicitacao.id))
+
+@app.route('/comentar_suprimento/<int:id>', methods=['POST'])
+@login_required
+def comentar_suprimento(id):
+    solicitacao = SolicitacaoCompra.query.get_or_404(id)
+    texto = request.form.get('texto')
+    
+    if texto:
+        novo_comentario = ComentarioCompra(
+            compra_id=id, 
+            usuario_id=current_user.id, 
+            texto=texto
+        )
+        db.session.add(novo_comentario)
+        db.session.commit()
+        
+        # --- INTEGRAÇÃO COM SUA NOTIFICAÇÃO AQUI ---
+        # Descobre quem deve ser notificado (se quem comentou foi o solicitante, avisa o comprador, e vice-versa)
+        # destino_id = solicitacao.comprador_id if current_user.id == solicitacao.solicitante_id else solicitacao.solicitante_id
+        # if destino_id:
+        #    notif = Notificacao(usuario_id=destino_id, mensagem=f"Nova mensagem em {solicitacao.item_nome}")
+        #    db.session.add(notif)
+        #    db.session.commit()
+
+    return redirect(url_for('detalhes_suprimento', id=solicitacao.id))
+
+# --- ETAPA 3: FINANCEIRO E RELATÓRIOS DE SUPRIMENTOS ---
+
+@app.route('/lancar_financeiro/<int:id>', methods=['POST'])
+@login_required
+def lancar_financeiro(id):
+    # Apenas gestores ou pessoas do financeiro devem aceder a isto
+    if current_user.role != 'gestor':
+        flash("Acesso restrito. Apenas o gestor/financeiro pode lançar custos.")
+        return redirect(url_for('suprimentos'))
+        
+    solicitacao = SolicitacaoCompra.query.get_or_404(id)
+    solicitacao.financeiro_lancado = True
+    solicitacao.financeiro_id = current_user.id
+    db.session.commit()
+    
+    # --- INTEGRAÇÃO COM NOTIFICAÇÃO ---
+    # Avisa quem comprou que o valor já foi processado pelo financeiro
+    # notif = Notificacao(usuario_id=solicitacao.comprador_id, mensagem=f"Financeiro processou a compra: {solicitacao.item_nome}")
+    # db.session.add(notif)
+    # db.session.commit()
+    
+    flash("Custo lançado no sistema financeiro com sucesso!")
+    return redirect(url_for('suprimentos'))
+
+@app.route('/exportar_suprimentos')
+@login_required
+def exportar_suprimentos():
+    if current_user.role != 'gestor':
+        flash("Acesso restrito ao gestor.")
+        return redirect(url_for('suprimentos'))
+        
+    compras = SolicitacaoCompra.query.all()
+    
+    dados = []
+    for c in compras:
+        solicitante = User.query.get(c.solicitante_id)
+        dados.append({
+            'ID': c.id,
+            'Item': c.item_nome,
+            'Quantidade': c.quantidade,
+            'Solicitante': f"{solicitante.first_name} {solicitante.last_name}" if solicitante else "N/A",
+            'Data Solicitação': c.data_solicitacao.strftime('%d/%m/%Y'),
+            'Status': c.status,
+            'Fornecedor': c.fornecedor or "---",
+            'Valor (R$)': c.valor,
+            'Lançado no Financeiro?': 'Sim' if c.financeiro_lancado else 'Não'
+        })
+        
+    df = pd.DataFrame(dados)
+    
+    # Salva temporariamente para envio
+    caminho_arquivo = os.path.join(app.config['UPLOAD_FOLDER'], 'relatorio_suprimentos.xlsx')
+    df.to_excel(caminho_arquivo, index=False)
+    
+    from flask import send_file
+    return send_file(caminho_arquivo, as_attachment=True)
 
 
 if __name__ == '__main__':

@@ -38,6 +38,11 @@
         </div>
         <a href="{{ url_for('home') }}"><i class="fas fa-home"></i> Início</a>
 
+        <a class="nav-link" href="{{ url_for('suprimentos') }}">
+            <i class="fas fa-shopping-cart"></i>
+            <span>Compras & Suprimentos</span>
+        </a>
+
         {% if current_user.role == 'gestor' %}
             <a href="{{ url_for('dashboard') }}" style="background: rgba(37, 99, 235, 0.1); color: #38bdf8; border-left: 4px solid #38bdf8;">
                 <i class="fas fa-chart-line"></i> Dashboard Gerencial

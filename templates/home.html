@@ -87,6 +87,39 @@
 </div>
 {% endif %}
 
+{% if current_user.role == 'gestor' %}
+<div class="card" style="border-radius: 12px; border: 1px solid #e2e8f0; margin-bottom: 25px; background: white; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);">
+    <div style="padding: 15px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center;">
+        <h5 style="margin: 0; font-weight: 800; color: #1e293b;"><i class="fas fa-box-open" style="color: #6366f1;"></i> Custos com Insumos/Suprimentos</h5>
+        <a href="{{ url_for('suprimentos') }}" style="font-size: 0.85rem; color: #3b82f6; text-decoration: none; font-weight: 600;">Ver Detalhes</a>
+    </div>
+    <div style="padding: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+        
+        <div>
+            <p style="margin: 0; font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Gasto no Mês Atual</p>
+            <h3 style="margin: 5px 0 0 0; color: #1e293b; font-weight: 800;">R$ {{ "{:,.2f}".format(kpi_suprimentos.atual) }}</h3>
+        </div>
+
+        <div style="border-left: 1px solid #e2e8f0; padding-left: 20px;">
+            <p style="margin: 0; font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Mês Anterior</p>
+            <h4 style="margin: 5px 0 0 0; color: #475569; font-weight: 700;">R$ {{ "{:,.2f}".format(kpi_suprimentos.anterior) }}</h4>
+        </div>
+
+        <div style="border-left: 1px solid #e2e8f0; padding-left: 20px;">
+            <p style="margin: 0; font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Variação (vs Anterior)</p>
+            <div style="margin-top: 5px; font-weight: 800; font-size: 1.1rem; color: {{ '#ef4444' if kpi_suprimentos.variacao > 0 else '#22c55e' }};">
+                {% if kpi_suprimentos.variacao > 0 %}
+                    <i class="fas fa-arrow-up"></i> +{{ kpi_suprimentos.variacao }}%
+                {% else %}
+                    <i class="fas fa-arrow-down"></i> {{ kpi_suprimentos.variacao }}%
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endif %}
+
 {% if alertas_log and (alertas_log.cancelados > 0 or alertas_log.trocas > 0) %}
 <div style="display: flex; gap: 15px; margin-bottom: 25px;">
     {% if alertas_log.cancelados > 0 %}

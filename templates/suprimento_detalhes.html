@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container-fluid" style="padding: 30px; background: #f8fafc; min-height: 100vh;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+        <div>
+            <a href="{{ url_for('suprimentos') }}" style="color: #64748b; text-decoration: none; font-size: 0.9rem;"><i class="fas fa-arrow-left"></i> Voltar</a>
+            <h2 style="font-weight: 800; color: #1e293b; margin-top: 10px;">{{ s.item_nome }}</h2>
+            <p style="color: #64748b; margin: 0;">Solicitado em {{ s.data_solicitacao.strftime('%d/%m/%Y às %H:%M') }}</p>
+        </div>
+        <div>
+            {% if s.status == 'Pendente' %}
+                <span class="badge" style="background: #fef3c7; color: #b45309; padding: 10px 20px; border-radius: 8px; font-size: 1rem;">Aguardando Compra</span>
+            {% elif s.status == 'Comprado' %}
+                <span class="badge" style="background: #e0f2fe; color: #0369a1; padding: 10px 20px; border-radius: 8px; font-size: 1rem;">Em Trânsito (Comprado)</span>
+            {% else %}
+                <span class="badge" style="background: #dcfce7; color: #15803d; padding: 10px 20px; border-radius: 8px; font-size: 1rem;"><i class="fas fa-check-double"></i> Recebido e Finalizado</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
+        
+        <div>
+            <div class="card" style="border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px;">
+                <div class="card-body" style="padding: 25px;">
+                    <h5 style="font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px;">Informações do Pedido</h5>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+                        <div>
+                            <small style="color: #64748b; font-weight: 700;">Quantidade</small>
+                            <div style="font-weight: 600;">{{ s.quantidade }}</div>
+                        </div>
+                        <div>
+                            <small style="color: #64748b; font-weight: 700;">Solicitante</small>
+                            <div style="font-weight: 600;">{{ solicitante.first_name }} {{ solicitante.last_name }}</div>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-bottom: 20px;">
+                        <small style="color: #64748b; font-weight: 700;">Motivo da Compra</small>
+                        <div style="background: #f8fafc; padding: 10px; border-radius: 8px; font-size: 0.9rem;">{{ s.motivo_uso }}</div>
+                    </div>
+
+                    {% if s.status != 'Pendente' %}
+                    <h5 style="font-weight: 800; border-bottom: 1px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 15px; margin-top: 30px;">Dados da Compra</h5>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <small style="color: #64748b; font-weight: 700;">Valor Pago</small>
+                            <div style="font-weight: 800; color: #10b981; font-size: 1.2rem;">R$ {{ "{:,.2f}".format(s.valor) }}</div>
+                        </div>
+                        <div>
+                            <small style="color: #64748b; font-weight: 700;">Fornecedor</small>
+                            <div style="font-weight: 600;">{{ s.fornecedor }}</div>
+                        </div>
+                        <div>
+                            <small style="color: #64748b; font-weight: 700;">Previsão de Entrega</small>
+                            <div style="font-weight: 600;">{{ s.prazo_estimado.strftime('%d/%m/%Y') if s.prazo_estimado else 'N/A' }}</div>
+                        </div>
+                        <div>
+                            <small style="color: #64748b; font-weight: 700;">Comprado por</small>
+                            <div style="font-weight: 600;">{{ comprador.first_name if comprador else 'Sistema' }}</div>
+                        </div>
+                    </div>
+
+                    {% if s.print_compra %}
+                    <div style="margin-top: 20px;">
+                        <a href="{{ url_for('static', filename='uploads/' + s.print_compra) }}" target="_blank" class="btn btn-sm btn-outline-primary" style="border-radius: 8px;">
+                            <i class="fas fa-file-invoice-dollar"></i> Ver Print da Compra
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if s.status == 'Comprado' and current_user.id == s.solicitante_id %}
+            <div class="card" style="border-radius: 15px; border: 2px dashed #cbd5e1; background: #f8fafc;">
+                <div class="card-body" style="padding: 25px; text-align: center;">
+                    <h5 style="font-weight: 700; color: #334155;">O material chegou?</h5>
+                    <p style="font-size: 0.85rem; color: #64748b;">Anexe uma foto da caixa ou do produto para confirmar o recebimento.</p>
+                    
+                    <form action="{{ url_for('receber_suprimento', id=s.id) }}" method="POST" enctype="multipart/form-data">
+                        <input type="file" name="anexo_recebimento" class="form-control" style="margin-bottom: 15px;" accept="image/*" required>
+                        <button type="submit" class="btn btn-success" style="width: 100%; border-radius: 8px; font-weight: 700;">
+                            <i class="fas fa-box-open"></i> Confirmar Recebimento
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if s.status == 'Recebido' and s.anexo_recebimento %}
+            <div class="card" style="border-radius: 15px; border: none; background: #f0fdf4; border-left: 4px solid #22c55e;">
+                <div class="card-body" style="padding: 20px;">
+                    <h6 style="font-weight: 700; color: #166534;"><i class="fas fa-check-circle"></i> Recebido em {{ s.data_recebimento.strftime('%d/%m/%Y') }}</h6>
+                    <a href="{{ url_for('static', filename='uploads/' + s.anexo_recebimento) }}" target="_blank" style="color: #15803d; text-decoration: underline; font-size: 0.9rem;">
+                        Ver foto do comprovante de entrega
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div class="card" style="border-radius: 15px; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.05); display: flex; flex-direction: column; height: 100%;">
+            <div class="card-header" style="background: white; border-radius: 15px 15px 0 0; padding: 20px; border-bottom: 1px solid #f1f5f9;">
+                <h5 style="font-weight: 800; margin: 0;"><i class="fas fa-comments" style="color: #3b82f6;"></i> Mensagens da Solicitação</h5>
+            </div>
+            
+            <div class="card-body" style="flex: 1; overflow-y: auto; background: #f8fafc; padding: 20px;">
+                {% for c in s.comentarios %}
+                <div style="margin-bottom: 15px; text-align: {{ 'right' if c.usuario_id == current_user.id else 'left' }};">
+                    <small style="color: #94a3b8; font-size: 0.75rem; display: block; margin-bottom: 3px;">
+                        {{ c.usuario.first_name }} - {{ c.data_hora.strftime('%d/%m %H:%M') }}
+                    </small>
+                    <div style="display: inline-block; padding: 10px 15px; border-radius: 15px; max-width: 80%; text-align: left;
+                        {{ 'background: #3b82f6; color: white; border-bottom-right-radius: 2px;' if c.usuario_id == current_user.id else 'background: white; border: 1px solid #e2e8f0; color: #334155; border-bottom-left-radius: 2px;' }}">
+                        {{ c.texto }}
+                    </div>
+                </div>
+                {% else %}
+                <div style="text-align: center; color: #94a3b8; margin-top: 20px; font-size: 0.9rem;">
+                    Nenhuma mensagem ainda. Use o espaço abaixo para tirar dúvidas sobre a compra.
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="card-footer" style="background: white; border-radius: 0 0 15px 15px; padding: 15px;">
+                <form action="{{ url_for('comentar_suprimento', id=s.id) }}" method="POST" style="display: flex; gap: 10px;">
+                    <input type="text" name="texto" class="form-control" placeholder="Escreva uma mensagem..." style="border-radius: 20px; margin: 0;" required>
+                    <button type="submit" class="btn btn-primary" style="border-radius: 20px; padding: 8px 20px;"><i class="fas fa-paper-plane"></i></button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

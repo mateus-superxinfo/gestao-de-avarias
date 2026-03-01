@@ -1,0 +1,146 @@
+{% extends "layout.html" %}
+{% block content %}
+<div class="container-fluid" style="padding: 30px;">
+    
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+        <h2 style="font-weight: 800; color: #1e293b;"><i class="fas fa-shopping-cart" style="color: #3b82f6;"></i> Suprimentos & Compras</h2>
+        <button class="btn" style="background: #1e293b; color: white; border-radius: 8px; font-weight: 600;" data-toggle="modal" data-target="#modalNovaSolicitacao">
+            <i class="fas fa-plus"></i> Solicitar Material
+        </button>
+        {% if current_user.role == 'gestor' %}
+            <a href="{{ url_for('exportar_suprimentos') }}" class="btn" style="background: #10b981; color: white; border-radius: 8px; font-weight: 600; margin-right: 10px;">
+                <i class="fas fa-file-excel"></i> Exportar Custos
+            </a>
+        {% endif %}
+    </div>
+
+    <div class="card" style="border-radius: 15px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; background: white;">
+        <div class="table-responsive">
+            <table class="table" style="margin-bottom: 0;">
+                <thead style="background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase;">
+                    <tr>
+                        <th class="border-0 px-4 py-3">Status</th>
+                        <th class="border-0 py-3">Item Solicitado</th>
+                        <th class="border-0 py-3">Solicitante</th>
+                        <th class="border-0 py-3">Informações da Compra</th>
+                        <th class="border-0 py-3 text-right px-4">Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in solicitacoes %}
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td class="px-4">
+                            {% if s.status == 'Pendente' %}
+                                <span class="badge" style="background: #fef3c7; color: #b45309; padding: 6px 12px; border-radius: 20px;">Pendente</span>
+                            {% elif s.status == 'Comprado' %}
+                                <span class="badge" style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 20px;">Comprado</span>
+                            {% else %}
+                                <span class="badge" style="background: #dcfce7; color: #15803d; padding: 6px 12px; border-radius: 20px;">Recebido</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div style="font-weight: 700; color: #1e293b; font-size: 1rem;">{{ s.item_nome }}</div>
+                            <small class="text-muted">Qtd: {{ s.quantidade }} | Motivo: {{ s.motivo_uso }}</small>
+                        </td>
+                        <td>
+                            <div style="font-weight: 600;">{{ s.solicitante_id }}</div> <small class="text-muted">{{ s.data_solicitacao.strftime('%d/%m %H:%M') }}</small>
+                        </td>
+                        <td>
+                            {% if s.status != 'Pendente' %}
+                                <div style="font-weight: 700; color: #10b981;">R$ {{ "{:,.2f}".format(s.valor) }}</div>
+                                <small class="text-muted">{{ s.fornecedor }} (Chega: {{ s.prazo_estimado.strftime('%d/%m') if s.prazo_estimado else 'N/A' }})</small>
+                            {% else %}
+                                <span style="color: #94a3b8; font-size: 0.85rem;">Aguardando compra...</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right px-4">
+                            {% if s.status == 'Pendente' %}
+                                <button class="btn btn-sm" style="background: #3b82f6; color: white; border-radius: 8px; font-weight: 600;" onclick="document.getElementById('comprar-{{s.id}}').style.display='flex'">
+                                    Registrar Compra
+                                </button>
+                            {% else %}
+                                {% if current_user.role == 'gestor' and not s.financeiro_lancado %}
+                                <form action="{{ url_for('lancar_financeiro', id=s.id) }}" method="POST" style="display: inline-block; margin-right: 5px;" onsubmit="return confirm('Confirmar lançamento deste custo no financeiro?');">
+                                    <button type="submit" class="btn btn-sm" style="background: #f59e0b; color: white; border-radius: 8px; font-weight: 600;">
+                                        <i class="fas fa-file-invoice-dollar"></i> Lançar
+                                    </button>
+                                </form>
+                                {% endif %}
+                                
+                                <a href="{{ url_for('detalhes_suprimento', id=s.id) }}" class="btn btn-sm" style="background: #f1f5f9; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none; padding: 6px 12px;">
+                                    Ver Detalhes
+                                </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <div id="comprar-{{s.id}}" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
+                        <div style="background:white; padding:30px; border-radius:20px; width:450px; text-align: left;">
+                            <h4 style="font-weight: 800; margin-bottom: 5px; color: #1e293b;">Registrar Compra</h4>
+                            <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">Item: <strong>{{ s.item_nome }}</strong> (Qtd: {{ s.quantidade }})</p>
+                            
+                            <form action="{{ url_for('comprar_suprimento', id=s.id) }}" method="POST" enctype="multipart/form-data">
+                                <div class="form-group">
+                                    <label style="font-size: 0.8rem; font-weight: 700;">Fornecedor / Loja</label>
+                                    <input type="text" name="fornecedor" class="form-control" placeholder="Ex: Mercado Livre" required>
+                                </div>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                                    <div class="form-group">
+                                        <label style="font-size: 0.8rem; font-weight: 700;">Valor Total (R$)</label>
+                                        <input type="text" name="valor" class="form-control" placeholder="Ex: 150,00" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label style="font-size: 0.8rem; font-weight: 700;">Previsão de Entrega</label>
+                                        <input type="date" name="prazo_estimado" class="form-control" required>
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label style="font-size: 0.8rem; font-weight: 700;">Print do Pedido / Recibo (Opcional)</label>
+                                    <input type="file" name="print_compra" class="form-control" style="padding: 7px;" accept="image/*,.pdf">
+                                </div>
+                                <div style="display:flex; gap:12px; margin-top: 20px;">
+                                    <button type="button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="btn btn-light" style="flex:1; border-radius: 10px; font-weight: 600;">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary" style="flex:1; border-radius: 10px; font-weight: 700;">Salvar Compra</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center py-5 text-muted">Nenhuma solicitação de compra cadastrada.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalNovaSolicitacao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="border-radius: 18px; border: none;">
+            <form action="{{ url_for('suprimentos') }}" method="POST">
+                <div class="modal-header" style="background: #f8fafc; border-radius: 18px 18px 0 0;">
+                    <h5 class="modal-title" style="font-weight: 800;">O que você precisa comprar?</h5>
+                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                </div>
+                <div class="modal-body" style="padding: 25px;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Nome do Item / Material</label>
+                        <input type="text" name="item_nome" class="form-control" placeholder="Ex: Papel Sulfite A4, Toner Impressora..." required>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Quantidade</label>
+                        <input type="text" name="quantidade" class="form-control" placeholder="Ex: 5 caixas, 2 unidades..." required>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.85rem;">Para que será usado? (Motivo)</label>
+                        <textarea name="motivo_uso" class="form-control" rows="2" placeholder="Ex: O papel da recepção acabou..." required></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: none;">
+                    <button type="submit" class="btn btn-primary btn-block" style="padding: 12px; font-weight: 700; border-radius: 10px;">Enviar Solicitação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
