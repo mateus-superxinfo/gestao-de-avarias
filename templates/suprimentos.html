@@ -1,145 +1,218 @@
 {% extends "layout.html" %}
 {% block content %}
-<div class="container-fluid" style="padding: 30px;">
+<div class="container-fluid" style="background: #f8fafc; min-height: 100vh; padding: 30px;">
     
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
-        <h2 style="font-weight: 800; color: #1e293b;"><i class="fas fa-shopping-cart" style="color: #3b82f6;"></i> Suprimentos & Compras</h2>
-        <button class="btn" style="background: #1e293b; color: white; border-radius: 8px; font-weight: 600;" data-toggle="modal" data-target="#modalNovaSolicitacao">
-            <i class="fas fa-plus"></i> Solicitar Material
-        </button>
+    <div style="margin-bottom: 35px; display: flex; justify-content: space-between; align-items: center;">
+        <div>
+            <h2 style="font-weight: 800; color: #1e293b; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-shopping-cart" style="color: #3b82f6;"></i> Suprimentos & Compras
+            </h2>
+            <p style="color: #64748b; margin-top: 5px;">Solicite materiais e acompanhe o fluxo de compras e lançamentos.</p>
+        </div>
         {% if current_user.role == 'gestor' %}
-            <a href="{{ url_for('exportar_suprimentos') }}" class="btn" style="background: #10b981; color: white; border-radius: 8px; font-weight: 600; margin-right: 10px;">
-                <i class="fas fa-file-excel"></i> Exportar Custos
+            <a href="{{ url_for('exportar_suprimentos') }}" class="btn" style="background: #10b981; color: white; border-radius: 12px; font-weight: 600; padding: 10px 20px; box-shadow: 0 4px 6px -1px rgba(16, 185, 129, 0.4);">
+                <i class="fas fa-file-excel"></i> Exportar Relatório de Custos
             </a>
         {% endif %}
     </div>
 
-    <div class="card" style="border-radius: 15px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; background: white;">
+    <div class="card" style="border-radius: 20px; border: none; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); margin-bottom: 40px; background: white;">
+        <div class="card-header" style="background: transparent; border-bottom: 1px solid #f1f5f9; padding: 20px 30px;">
+            <h5 style="margin: 0; font-weight: 800; color: #334155;"><i class="fas fa-plus-circle" style="color: #3b82f6;"></i> Nova Solicitação de Material</h5>
+        </div>
+        <div class="card-body" style="padding: 30px;">
+            <form action="{{ url_for('suprimentos') }}" method="POST">
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 20px;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Nome do Item / Material</label>
+                        <input type="text" name="item_nome" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" placeholder="Ex: Papel Sulfite A4..." required>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Quantidade</label>
+                        <input type="text" name="quantidade" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" placeholder="Ex: 5 caixas" required>
+                    </div>
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;">Para que será usado? (Motivo)</label>
+                    <textarea name="motivo_uso" class="form-control" rows="2" style="border-radius: 10px; border-color: #e2e8f0;" placeholder="Descreva a necessidade da compra..." required></textarea>
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;"><i class="fas fa-shopping-bag" style="color:#f59e0b;"></i> Quem fará a compra?</label>
+                        <select name="comprador_id" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" required>
+                            <option value="" disabled selected>Selecione o comprador...</option>
+                            {% for u in usuarios %}
+                                <option value="{{ u.id }}">{{ u.first_name }} {{ u.last_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label style="font-weight: 700; font-size: 0.8rem; color: #64748b; text-transform: uppercase;"><i class="fas fa-file-invoice-dollar" style="color:#22c55e;"></i> Quem lançará no financeiro?</label>
+                        <select name="financeiro_id" class="form-control" style="border-radius: 10px; height: 45px; border-color: #e2e8f0;" required>
+                            <option value="" disabled selected>Selecione o financeiro...</option>
+                            {% for u in usuarios %}
+                                <option value="{{ u.id }}">{{ u.first_name }} {{ u.last_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <div style="text-align: right;">
+                    <button type="submit" class="btn" style="background: #3b82f6; color: white; padding: 12px 40px; border-radius: 12px; font-weight: 800; transition: 0.3s; box-shadow: 0 4px 14px rgba(59, 130, 246, 0.4);">
+                        <i class="fas fa-paper-plane"></i> Enviar Solicitação de Compra
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+        <h4 style="font-weight: 800; color: #1e293b; margin: 0;">Acompanhamento de Compras</h4>
+        <span class="badge" style="background: #e2e8f0; color: #475569; padding: 5px 12px; border-radius: 20px;">{{ solicitacoes|length }} registros</span>
+    </div>
+
+    <div class="card" style="border-radius: 20px; border: none; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); overflow: hidden; background: white;">
         <div class="table-responsive">
             <table class="table" style="margin-bottom: 0;">
-                <thead style="background: #f8fafc; color: #64748b; font-size: 0.75rem; text-transform: uppercase;">
+                <thead style="background: #f1f5f9; color: #475569; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em;">
                     <tr>
-                        <th class="border-0 px-4 py-3">Status</th>
+                        <th class="border-0 px-4 py-3">Status Geral</th>
                         <th class="border-0 py-3">Item Solicitado</th>
-                        <th class="border-0 py-3">Solicitante</th>
-                        <th class="border-0 py-3">Informações da Compra</th>
-                        <th class="border-0 py-3 text-right px-4">Ação</th>
+                        <th class="border-0 py-3">Fluxo de Responsáveis</th>
+                        <th class="border-0 py-3">Dados Financeiros</th>
+                        <th class="border-0 py-3 text-right px-4">Ações</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody style="font-size: 0.9rem;">
                     {% for s in solicitacoes %}
-                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                    <tr style="border-bottom: 1px solid #f8fafc;">
                         <td class="px-4">
                             {% if s.status == 'Pendente' %}
-                                <span class="badge" style="background: #fef3c7; color: #b45309; padding: 6px 12px; border-radius: 20px;">Pendente</span>
+                                <span class="badge" style="background: #fef3c7; color: #b45309; padding: 8px 14px; border-radius: 30px; font-weight: 700;">Aguardando Compra</span>
                             {% elif s.status == 'Comprado' %}
-                                <span class="badge" style="background: #e0f2fe; color: #0369a1; padding: 6px 12px; border-radius: 20px;">Comprado</span>
+                                <span class="badge" style="background: #e0f2fe; color: #0369a1; padding: 8px 14px; border-radius: 30px; font-weight: 700;">Em Trânsito</span>
                             {% else %}
-                                <span class="badge" style="background: #dcfce7; color: #15803d; padding: 6px 12px; border-radius: 20px;">Recebido</span>
+                                <span class="badge" style="background: #dcfce7; color: #15803d; padding: 8px 14px; border-radius: 30px; font-weight: 700;">Recebido na Empresa</span>
                             {% endif %}
                         </td>
-                        <td>
-                            <div style="font-weight: 700; color: #1e293b; font-size: 1rem;">{{ s.item_nome }}</div>
-                            <small class="text-muted">Qtd: {{ s.quantidade }} | Motivo: {{ s.motivo_uso }}</small>
+                        
+                        <td style="max-width: 250px;">
+                            <div style="font-weight: 800; color: #1e293b; font-size: 1.05rem;">{{ s.item_nome }}</div>
+                            <small class="text-muted" style="display: block; margin-top: 3px;"><strong>Qtd:</strong> {{ s.quantidade }}</small>
+                            <small class="text-muted" style="display: block;"><strong>Motivo:</strong> {{ s.motivo_uso }}</small>
+                            <small style="color: #94a3b8; font-size: 0.7rem; margin-top: 5px; display: block;">Criado em {{ s.data_solicitacao.strftime('%d/%m às %H:%M') }}</small>
                         </td>
-                        <td>
-                            <div style="font-weight: 600;">{{ s.solicitante_id }}</div> <small class="text-muted">{{ s.data_solicitacao.strftime('%d/%m %H:%M') }}</small>
+
+                        <td style="min-width: 250px; background: #fafafa; border-radius: 8px;">
+                            <div style="display: flex; flex-direction: column; gap: 8px; padding: 5px;">
+                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem;">
+                                    <span style="color: #64748b;"><i class="fas fa-user"></i> Solicitou:</span>
+                                    <strong style="color: #1e293b;">{{ s.solicitante.first_name }} {{ s.solicitante.last_name }}</strong>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; padding-top: 5px; border-top: 1px dashed #e2e8f0;">
+                                    <span style="color: #64748b;"><i class="fas fa-shopping-bag"></i> Compra:</span>
+                                    <div style="text-align: right;">
+                                        <strong style="color: #1e293b; display: block;">{{ s.comprador.first_name if s.comprador else 'Não definido' }}</strong>
+                                        {% if s.status != 'Pendente' %}
+                                            <span style="color: #22c55e; font-size: 0.7rem;"><i class="fas fa-check"></i> Já Comprou</span>
+                                        {% else %}
+                                            <span style="color: #f59e0b; font-size: 0.7rem;"><i class="fas fa-clock"></i> Pendente</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; font-size: 0.8rem; padding-top: 5px; border-top: 1px dashed #e2e8f0;">
+                                    <span style="color: #64748b;"><i class="fas fa-file-invoice-dollar"></i> Financeiro:</span>
+                                    <div style="text-align: right;">
+                                        <strong style="color: #1e293b; display: block;">{{ s.financeiro.first_name if s.financeiro else 'Não definido' }}</strong>
+                                        {% if s.financeiro_lancado %}
+                                            <span style="color: #22c55e; font-size: 0.7rem;"><i class="fas fa-check-double"></i> Lançado</span>
+                                        {% else %}
+                                            <span style="color: #f59e0b; font-size: 0.7rem;"><i class="fas fa-clock"></i> Pendente</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
                         </td>
+
                         <td>
                             {% if s.status != 'Pendente' %}
-                                <div style="font-weight: 700; color: #10b981;">R$ {{ "{:,.2f}".format(s.valor) }}</div>
-                                <small class="text-muted">{{ s.fornecedor }} (Chega: {{ s.prazo_estimado.strftime('%d/%m') if s.prazo_estimado else 'N/A' }})</small>
+                                <div style="font-weight: 800; color: #10b981; font-size: 1.1rem;">R$ {{ "{:,.2f}".format(s.valor) }}</div>
+                                <small class="text-muted" style="display: block; font-weight: 600;"><i class="fas fa-store"></i> {{ s.fornecedor }}</small>
+                                <small class="text-muted" style="display: block;"><i class="fas fa-truck"></i> Chega: {{ s.prazo_estimado.strftime('%d/%m') if s.prazo_estimado else 'N/A' }}</small>
                             {% else %}
-                                <span style="color: #94a3b8; font-size: 0.85rem;">Aguardando compra...</span>
+                                <span style="color: #94a3b8; font-size: 0.85rem;"><i class="fas fa-hourglass-start"></i> Aguardando compra...</span>
                             {% endif %}
                         </td>
+
                         <td class="text-right px-4">
-                            {% if s.status == 'Pendente' %}
-                                <button class="btn btn-sm" style="background: #3b82f6; color: white; border-radius: 8px; font-weight: 600;" onclick="document.getElementById('comprar-{{s.id}}').style.display='flex'">
-                                    Registrar Compra
-                                </button>
-                            {% else %}
-                                {% if current_user.role == 'gestor' and not s.financeiro_lancado %}
-                                <form action="{{ url_for('lancar_financeiro', id=s.id) }}" method="POST" style="display: inline-block; margin-right: 5px;" onsubmit="return confirm('Confirmar lançamento deste custo no financeiro?');">
-                                    <button type="submit" class="btn btn-sm" style="background: #f59e0b; color: white; border-radius: 8px; font-weight: 600;">
-                                        <i class="fas fa-file-invoice-dollar"></i> Lançar
+                            <div style="display: flex; flex-direction: column; gap: 8px; align-items: flex-end;">
+                                {% if s.status == 'Pendente' and (current_user.id == s.comprador_id or current_user.role == 'gestor') %}
+                                    <button class="btn btn-sm" style="background: #3b82f6; color: white; border-radius: 8px; font-weight: 700; width: 100%;" onclick="document.getElementById('comprar-{{s.id}}').style.display='flex'">
+                                        <i class="fas fa-shopping-cart"></i> Fazer Compra
                                     </button>
-                                </form>
                                 {% endif %}
-                                
-                                <a href="{{ url_for('detalhes_suprimento', id=s.id) }}" class="btn btn-sm" style="background: #f1f5f9; color: #475569; border-radius: 8px; font-weight: 600; text-decoration: none; padding: 6px 12px;">
-                                    Ver Detalhes
-                                </a>
-                            {% endif %}
+
+                                {% if s.status != 'Pendente' %}
+                                    {% if (current_user.id == s.financeiro_id or current_user.role == 'gestor') and not s.financeiro_lancado %}
+                                    <form action="{{ url_for('lancar_financeiro', id=s.id) }}" method="POST" style="width: 100%;" onsubmit="return confirm('Confirmar que este custo já foi lançado na contabilidade?');">
+                                        <button type="submit" class="btn btn-sm" style="background: #f59e0b; color: white; border-radius: 8px; font-weight: 700; width: 100%;">
+                                            <i class="fas fa-file-invoice-dollar"></i> Dar Baixa Financeira
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    
+                                    <a href="{{ url_for('detalhes_suprimento', id=s.id) }}" class="btn btn-sm" style="background: #f1f5f9; color: #475569; border-radius: 8px; font-weight: 700; text-decoration: none; width: 100%; text-align: center;">
+                                        <i class="fas fa-eye"></i> Detalhes / Chat
+                                    </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
 
                     <div id="comprar-{{s.id}}" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.6); z-index:9999; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
-                        <div style="background:white; padding:30px; border-radius:20px; width:450px; text-align: left;">
+                        <div style="background:white; padding:30px; border-radius:20px; width:450px; text-align: left; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);">
                             <h4 style="font-weight: 800; margin-bottom: 5px; color: #1e293b;">Registrar Compra</h4>
                             <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 20px;">Item: <strong>{{ s.item_nome }}</strong> (Qtd: {{ s.quantidade }})</p>
                             
                             <form action="{{ url_for('comprar_suprimento', id=s.id) }}" method="POST" enctype="multipart/form-data">
                                 <div class="form-group">
                                     <label style="font-size: 0.8rem; font-weight: 700;">Fornecedor / Loja</label>
-                                    <input type="text" name="fornecedor" class="form-control" placeholder="Ex: Mercado Livre" required>
+                                    <input type="text" name="fornecedor" class="form-control" style="border-radius: 10px;" placeholder="Ex: Mercado Livre" required>
                                 </div>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                                     <div class="form-group">
                                         <label style="font-size: 0.8rem; font-weight: 700;">Valor Total (R$)</label>
-                                        <input type="text" name="valor" class="form-control" placeholder="Ex: 150,00" required>
+                                        <input type="text" name="valor" class="form-control" style="border-radius: 10px;" placeholder="Ex: 150,00" required>
                                     </div>
                                     <div class="form-group">
                                         <label style="font-size: 0.8rem; font-weight: 700;">Previsão de Entrega</label>
-                                        <input type="date" name="prazo_estimado" class="form-control" required>
+                                        <input type="date" name="prazo_estimado" class="form-control" style="border-radius: 10px;" required>
                                     </div>
                                 </div>
                                 <div class="form-group">
                                     <label style="font-size: 0.8rem; font-weight: 700;">Print do Pedido / Recibo (Opcional)</label>
-                                    <input type="file" name="print_compra" class="form-control" style="padding: 7px;" accept="image/*,.pdf">
+                                    <input type="file" name="print_compra" class="form-control" style="padding: 7px; border-radius: 10px;" accept="image/*,.pdf">
                                 </div>
-                                <div style="display:flex; gap:12px; margin-top: 20px;">
-                                    <button type="button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="btn btn-light" style="flex:1; border-radius: 10px; font-weight: 600;">Cancelar</button>
-                                    <button type="submit" class="btn btn-primary" style="flex:1; border-radius: 10px; font-weight: 700;">Salvar Compra</button>
+                                <div style="display:flex; gap:12px; margin-top: 25px;">
+                                    <button type="button" onclick="this.parentElement.parentElement.parentElement.parentElement.style.display='none'" class="btn btn-light" style="flex:1; border-radius: 10px; font-weight: 700;">Cancelar</button>
+                                    <button type="submit" class="btn btn-primary" style="flex:1; border-radius: 10px; font-weight: 800;">Salvar Compra</button>
                                 </div>
                             </form>
                         </div>
                     </div>
                     {% else %}
-                    <tr><td colspan="5" class="text-center py-5 text-muted">Nenhuma solicitação de compra cadastrada.</td></tr>
+                    <tr>
+                        <td colspan="5" class="text-center py-5">
+                            <i class="fas fa-box-open fa-3x" style="color: #cbd5e1; margin-bottom: 15px;"></i>
+                            <h5 style="color: #64748b; font-weight: 700;">Tudo abastecido!</h5>
+                            <p style="color: #94a3b8; font-size: 0.9rem;">Nenhuma solicitação de compra cadastrada no momento.</p>
+                        </td>
+                    </tr>
                     {% endfor %}
                 </tbody>
             </table>
-        </div>
-    </div>
-</div>
-
-<div class="modal fade" id="modalNovaSolicitacao" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content" style="border-radius: 18px; border: none;">
-            <form action="{{ url_for('suprimentos') }}" method="POST">
-                <div class="modal-header" style="background: #f8fafc; border-radius: 18px 18px 0 0;">
-                    <h5 class="modal-title" style="font-weight: 800;">O que você precisa comprar?</h5>
-                    <button type="button" class="close" data-dismiss="modal">&times;</button>
-                </div>
-                <div class="modal-body" style="padding: 25px;">
-                    <div class="form-group">
-                        <label style="font-weight: 700; font-size: 0.85rem;">Nome do Item / Material</label>
-                        <input type="text" name="item_nome" class="form-control" placeholder="Ex: Papel Sulfite A4, Toner Impressora..." required>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-weight: 700; font-size: 0.85rem;">Quantidade</label>
-                        <input type="text" name="quantidade" class="form-control" placeholder="Ex: 5 caixas, 2 unidades..." required>
-                    </div>
-                    <div class="form-group">
-                        <label style="font-weight: 700; font-size: 0.85rem;">Para que será usado? (Motivo)</label>
-                        <textarea name="motivo_uso" class="form-control" rows="2" placeholder="Ex: O papel da recepção acabou..." required></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer" style="border-top: none;">
-                    <button type="submit" class="btn btn-primary btn-block" style="padding: 12px; font-weight: 700; border-radius: 10px;">Enviar Solicitação</button>
-                </div>
-            </form>
         </div>
     </div>
 </div>

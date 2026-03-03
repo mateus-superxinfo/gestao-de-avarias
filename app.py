@@ -170,6 +170,11 @@ class SolicitacaoCompra(db.Model):
     solicitante_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     comprador_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     financeiro_id = db.Column(db.Integer, db.ForeignKey('user.id'))
+
+    # --- NOVAS RELAÇÕES PARA MOSTRAR OS NOMES NO HTML ---
+    solicitante = db.relationship('User', foreign_keys=[solicitante_id])
+    comprador = db.relationship('User', foreign_keys=[comprador_id])
+    financeiro = db.relationship('User', foreign_keys=[financeiro_id])
     
     # Dados preenchidos no ato da Compra
     fornecedor = db.Column(db.String(100))
@@ -1108,32 +1113,37 @@ def executar_backup():
 @app.route('/suprimentos', methods=['GET', 'POST'])
 @login_required
 def suprimentos():
+    usuarios = User.query.all() # Busca usuários para o Select
+    
     if request.method == 'POST':
         nova_solicitacao = SolicitacaoCompra(
             item_nome=request.form.get('item_nome'),
             quantidade=request.form.get('quantidade'),
             motivo_uso=request.form.get('motivo_uso'),
             solicitante_id=current_user.id,
+            comprador_id=request.form.get('comprador_id'), # Quem foi escalado para comprar
+            financeiro_id=request.form.get('financeiro_id'), # Quem foi escalado para lançar
             status='Pendente'
         )
         db.session.add(nova_solicitacao)
+        
+        # NOTIFICAÇÃO 1: Avisa o comprador que há um pedido para ele
+        if nova_solicitacao.comprador_id:
+            db.session.add(Notification(message=f"🛒 Comprar: {nova_solicitacao.item_nome}", user_id=nova_solicitacao.comprador_id))
+            
         db.session.commit()
         flash("Solicitação de compra criada com sucesso!")
         return redirect(url_for('suprimentos'))
     
-    # Busca todas as solicitações, das mais recentes para as mais antigas
     solicitacoes = SolicitacaoCompra.query.order_by(SolicitacaoCompra.data_solicitacao.desc()).all()
-    return render_template('suprimentos.html', solicitacoes=solicitacoes)
+    return render_template('suprimentos.html', solicitacoes=solicitacoes, usuarios=usuarios)
 
 @app.route('/comprar_suprimento/<int:id>', methods=['POST'])
 @login_required
 def comprar_suprimento(id):
     solicitacao = SolicitacaoCompra.query.get_or_404(id)
-    
-    # Preenche os dados da compra
     solicitacao.fornecedor = request.form.get('fornecedor')
     
-    # Converte o valor digitado (ex: 150,50) para formato numérico do banco
     valor_str = request.form.get('valor', '0').replace('R$', '').replace('.', '').replace(',', '.').strip()
     solicitacao.valor = float(valor_str) if valor_str else 0.0
     
@@ -1141,16 +1151,17 @@ def comprar_suprimento(id):
     if prazo:
         solicitacao.prazo_estimado = datetime.datetime.strptime(prazo, '%Y-%m-%d').date()
     
-    # Salva o print da compra, se enviado
     arquivo = request.files.get('print_compra')
     if arquivo and arquivo.filename:
         filename = secure_filename(f"compra_{id}_{arquivo.filename}")
         arquivo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
         solicitacao.print_compra = filename
         
-    solicitacao.comprador_id = current_user.id
     solicitacao.data_compra = datetime.datetime.now()
-    solicitacao.status = 'Comprado' # Muda o status
+    solicitacao.status = 'Comprado'
+    
+    # NOTIFICAÇÃO 2: Avisa o solicitante que o item foi comprado
+    db.session.add(Notification(message=f"🛍️ Seu pedido foi comprado: {solicitacao.item_nome}", user_id=solicitacao.solicitante_id))
     
     db.session.commit()
     flash("Compra registrada! O solicitante já pode visualizar.")
@@ -1173,7 +1184,6 @@ def detalhes_suprimento(id):
 def receber_suprimento(id):
     solicitacao = SolicitacaoCompra.query.get_or_404(id)
     
-    # Salva a foto do produto recebido/canhoto
     arquivo = request.files.get('anexo_recebimento')
     if arquivo and arquivo.filename:
         filename = secure_filename(f"recebido_{id}_{arquivo.filename}")
@@ -1182,14 +1192,12 @@ def receber_suprimento(id):
         
     solicitacao.status = 'Recebido'
     solicitacao.data_recebimento = datetime.datetime.now()
+    
+    # NOTIFICAÇÃO 3: Avisa o financeiro para lançar e o comprador que chegou
+    db.session.add(Notification(message=f"📦 Chegou na empresa: {solicitacao.item_nome}. Pronto para lançamento financeiro.", user_id=solicitacao.financeiro_id))
+    db.session.add(Notification(message=f"📦 O solicitante recebeu a compra: {solicitacao.item_nome}", user_id=solicitacao.comprador_id))
+    
     db.session.commit()
-    
-    # --- INTEGRAÇÃO COM SUA NOTIFICAÇÃO AQUI ---
-    # Exemplo: Notificar quem comprou que o item já chegou
-    # notif = Notificacao(usuario_id=solicitacao.comprador_id, mensagem=f"O item {solicitacao.item_nome} foi recebido!")
-    # db.session.add(notif)
-    # db.session.commit()
-    
     flash("Recebimento confirmado e notificado!")
     return redirect(url_for('detalhes_suprimento', id=solicitacao.id))
 
@@ -1223,22 +1231,14 @@ def comentar_suprimento(id):
 @app.route('/lancar_financeiro/<int:id>', methods=['POST'])
 @login_required
 def lancar_financeiro(id):
-    # Apenas gestores ou pessoas do financeiro devem aceder a isto
-    if current_user.role != 'gestor':
-        flash("Acesso restrito. Apenas o gestor/financeiro pode lançar custos.")
-        return redirect(url_for('suprimentos'))
-        
     solicitacao = SolicitacaoCompra.query.get_or_404(id)
     solicitacao.financeiro_lancado = True
-    solicitacao.financeiro_id = current_user.id
+    
+    # NOTIFICAÇÃO 4: Avisa todos que o ciclo fechou
+    db.session.add(Notification(message=f"💲 Custo lançado pelo financeiro: {solicitacao.item_nome}", user_id=solicitacao.solicitante_id))
+    db.session.add(Notification(message=f"💲 Custo lançado pelo financeiro: {solicitacao.item_nome}", user_id=solicitacao.comprador_id))
+    
     db.session.commit()
-    
-    # --- INTEGRAÇÃO COM NOTIFICAÇÃO ---
-    # Avisa quem comprou que o valor já foi processado pelo financeiro
-    # notif = Notificacao(usuario_id=solicitacao.comprador_id, mensagem=f"Financeiro processou a compra: {solicitacao.item_nome}")
-    # db.session.add(notif)
-    # db.session.commit()
-    
     flash("Custo lançado no sistema financeiro com sucesso!")
     return redirect(url_for('suprimentos'))
 
