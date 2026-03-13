@@ -216,6 +216,8 @@ admin.add_view(ModelView(Task, db.session))
 admin.add_view(ModelView(ProdutoAvariado, db.session))
 admin.add_view(ModelView(Lote, db.session))
 admin.add_view(ModelView(Ticket, db.session))
+admin.add_view(ModelView(SolicitacaoCompra, db.session))
+admin.add_view(ModelView(ComentarioCompra, db.session))
 
 # --- PROCESSADOR DE CONTEXTO (CORRIGE O ERRO UNREAD) ---
 
