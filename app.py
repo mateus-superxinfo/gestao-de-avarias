@@ -216,6 +216,7 @@ admin.add_view(ModelView(Task, db.session))
 admin.add_view(ModelView(ProdutoAvariado, db.session))
 admin.add_view(ModelView(Lote, db.session))
 admin.add_view(ModelView(Ticket, db.session))
+admin.add_view(ModelView(PendenciaLogistica, db.session))
 admin.add_view(ModelView(SolicitacaoCompra, db.session))
 admin.add_view(ModelView(ComentarioCompra, db.session))
 
@@ -967,7 +968,7 @@ def gerenciar_pendencias():
         nova_pendencia = PendenciaLogistica(
             tipo=request.form.get('tipo'),
             pedido_id=request.form.get('pedido_id'),
-            marketplace=request.form.get('marketplace'), # Este captura o valor do <select>
+            marketplace=request.form.get('marketplace'),
             protocolo=request.form.get('protocolo'),
             codigo_rastreio=request.form.get('codigo_rastreio'),
             prazo_limite=data_prazo,
@@ -978,9 +979,35 @@ def gerenciar_pendencias():
         flash("Pendência registrada!")
         return redirect(url_for('gerenciar_pendencias'))
 
-    pendencias = PendenciaLogistica.query.filter_by(status='Pendente').order_by(PendenciaLogistica.prazo_limite).all()
-    return render_template('pendencias.html', pendencias=pendencias, hoje=datetime.date.today())
+    meses_pt = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
+    
+    # 1. PENDÊNCIAS ATIVAS (Agrupadas por Mês, ordenadas da mais recente para a mais antiga)
+    ativas = PendenciaLogistica.query.filter_by(status='Pendente').order_by(PendenciaLogistica.data_notificacao.desc()).all()
+    pendencias_ativas = {}
+    for p in ativas:
+        dt = p.data_notificacao or datetime.date.today()
+        mes_ano = f"{meses_pt[dt.month - 1]} {dt.year}"
+        if mes_ano not in pendencias_ativas: 
+            pendencias_ativas[mes_ano] = []
+        pendencias_ativas[mes_ano].append(p)
+        
+    # 2. PENDÊNCIAS FINALIZADAS / HISTÓRICO
+    resolvidas = PendenciaLogistica.query.filter_by(status='Resolvido').order_by(PendenciaLogistica.data_notificacao.desc()).all()
+    pendencias_resolvidas = {}
+    for p in resolvidas:
+        dt = p.data_notificacao or datetime.date.today()
+        mes_ano = f"{meses_pt[dt.month - 1]} {dt.year}"
+        if mes_ano not in pendencias_resolvidas: 
+            pendencias_resolvidas[mes_ano] = []
+        pendencias_resolvidas[mes_ano].append(p)
 
+    return render_template('pendencias.html', 
+                           pendencias_ativas=pendencias_ativas, 
+                           pendencias_resolvidas=pendencias_resolvidas,
+                           total_ativas=len(ativas),
+                           hoje=datetime.date.today())
+
+                           
 # Rota para adiar a data de revisão
 @app.route('/adiar_pendencia/<int:id>', methods=['POST'])
 @login_required
