@@ -3,6 +3,9 @@ __pycache__/
 venv/
 instance/
 .vscode/
+produtos.db
+static/uploads/
+.env
 # Proteção de Dados Locais
 *.db
 credentials.json
