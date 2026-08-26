@@ -1304,6 +1304,37 @@ def exportar_suprimentos():
     from flask import send_file
     return send_file(caminho_arquivo, as_attachment=True)
 
+@app.route('/admin/gerir_tarefas', methods=['GET', 'POST'])
+@login_required # (Descomente se usar Flask-Login)
+def gerir_tarefas():
+    # Se o formulário for enviado (Transferência ou Edição)
+    if request.method == 'POST':
+        tarefa_id = request.form.get('tarefa_id')
+        novo_usuario_id = request.form.get('novo_usuario_id')
+        nova_frequencia = request.form.get('frequencia')
+        status = request.form.get('status') # Ex: Pausada, Ativa
+        
+        # Procura a tarefa e atualiza os dados
+        tarefa = Tarefa.query.get(tarefa_id)
+        if tarefa:
+            tarefa.usuario_id = novo_usuario_id
+            tarefa.frequencia = nova_frequencia
+            tarefa.status = status
+            db.session.commit()
+            flash('Tarefa atualizada com sucesso!', 'success')
+            
+        return redirect(url_request.referrer)
+
+    # Para visualização da página (GET)
+    usuarios = Usuario.query.all()
+    usuario_selecionado_id = request.args.get('usuario_id')
+    
+    tarefas = []
+    if usuario_selecionado_id:
+        tarefas = Tarefa.query.filter_by(usuario_id=usuario_selecionado_id).all()
+        
+    return render_template('admin_tarefas.html', usuarios=usuarios, tarefas=tarefas, usuario_selecionado_id=usuario_selecionado_id)
+
 
 if __name__ == '__main__':
     with app.app_context():

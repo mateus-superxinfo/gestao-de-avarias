@@ -1,0 +1,46 @@
+<!-- Filtro de Funcionário -->
+<form method="GET" action="/admin/gerir_tarefas">
+    <label>Buscar Tarefas do Usuário:</label>
+    <select name="usuario_id" onchange="this.form.submit()">
+        <option value="">Selecione um funcionário...</option>
+        {% for u in usuarios %}
+            <option value="{{ u.id }}" {% if u.id|string == usuario_selecionado_id %}selected{% endif %}>{{ u.nome }}</option>
+        {% endfor %}
+    </select>
+</form>
+
+<!-- Lista de Tarefas -->
+{% if tarefas %}
+    <table>
+        <tr>
+            <th>Tarefa</th>
+            <th>Frequência</th>
+            <th>Ações (Transferir/Pausar)</th>
+        </tr>
+        {% for t in tarefas %}
+        <tr>
+            <td>{{ t.descricao }}</td>
+            <td>{{ t.frequencia }}</td>
+            <td>
+                <!-- Formulário para editar esta tarefa específica -->
+                <form method="POST" action="/admin/gerir_tarefas">
+                    <input type="hidden" name="tarefa_id" value="{{ t.id }}">
+                    
+                    <select name="novo_usuario_id">
+                        {% for u in usuarios %}
+                            <option value="{{ u.id }}" {% if u.id == t.usuario_id %}selected{% endif %}>{{ u.nome }}</option>
+                        {% endfor %}
+                    </select>
+                    
+                    <select name="status">
+                        <option value="Ativa" {% if t.status == 'Ativa' %}selected{% endif %}>Ativa</option>
+                        <option value="Pausada" {% if t.status == 'Pausada' %}selected{% endif %}>Pausada</option>
+                    </select>
+
+                    <button type="submit">Atualizar</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endif %}
