@@ -15,7 +15,18 @@
         body { font-family: 'Inter', sans-serif; display: flex; margin: 0; background: var(--bg-body); color: var(--text-main); }
         
         /* Sidebar Moderna */
-        .sidebar { width: 260px; background: var(--bg-sidebar); color: white; height: 100vh; position: sticky; top: 0; padding: 25px 15px; box-sizing: border-box; }
+        .sidebar { width: 260px; background: var(--bg-sidebar); color: white; height: 100vh; position: sticky; top: 0; padding: 25px 15px; box-sizing: border-box; overflow-y: auto; flex-shrink: 0; transition: width 0.2s ease; }
+        .sidebar.collapsed { width: 72px; padding-left: 10px; padding-right: 10px; }
+        .sidebar.collapsed h3, .sidebar.collapsed .sidebar-greeting { font-size: 0; text-align: center; padding-left: 0; }
+        .sidebar.collapsed h3 i { font-size: 1.2rem; }
+        .sidebar.collapsed .sidebar-greeting { display: none; }
+        .sidebar.collapsed a { justify-content: center; padding-left: 10px; padding-right: 10px; font-size: 0; }
+        .sidebar.collapsed a i { margin-right: 0; font-size: 1rem; }
+        .sidebar.collapsed a span, .sidebar.collapsed .badge-count { display: none; }
+        .sidebar.collapsed hr { margin-left: 0; margin-right: 0; }
+        .sidebar-toggle { width: 100%; margin-bottom: 18px; padding: 8px; border: 1px solid #475569; border-radius: 6px; background: transparent; color: #cbd5e1; cursor: pointer; }
+        .sidebar.collapsed .sidebar-toggle { font-size: 0; }
+        .sidebar.collapsed .sidebar-toggle i { font-size: 1rem; }
         .sidebar h3 { font-size: 1.2rem; margin-bottom: 30px; padding-left: 10px; color: #38bdf8; }
         .sidebar a { color: #cbd5e1; text-decoration: none; display: flex; align-items: center; padding: 12px 15px; border-radius: 8px; margin-bottom: 8px; transition: 0.3s; }
         .sidebar a i { margin-right: 12px; width: 20px; text-align: center; }
@@ -31,17 +42,15 @@
     </style>
 </head>
 <body>
-    <div class="sidebar">
+    <div class="sidebar" id="sidebar">
+        <button class="sidebar-toggle" type="button" onclick="toggleSidebar()" title="Mostrar ou esconder menu">
+            <i class="fas fa-bars"></i><span> Menu</span>
+        </button>
         <h3><i class="fas fa-boxes"></i> LogiControl</h3>
-        <div style="margin-bottom: 25px; padding-left: 10px; font-size: 0.85rem; color: #94a3b8;">
+        <div class="sidebar-greeting" style="margin-bottom: 25px; padding-left: 10px; font-size: 0.85rem; color: #94a3b8;">
             Olá, <strong>{{ current_user.first_name }}</strong>
         </div>
         <a href="{{ url_for('home') }}"><i class="fas fa-home"></i> Início</a>
-
-        <a class="nav-link" href="{{ url_for('suprimentos') }}">
-            <i class="fas fa-shopping-cart"></i>
-            <span>Compras & Suprimentos</span>
-        </a>
 
         {% if current_user.role == 'gestor' %}
             <a href="{{ url_for('dashboard') }}" style="background: rgba(37, 99, 235, 0.1); color: #38bdf8; border-left: 4px solid #38bdf8;">
@@ -67,6 +76,7 @@
         {% if current_user.role == 'gestor' %}
             <hr style="border: 0.5px solid #334155; margin: 20px 0;">
             <a href="{{ url_for('gerir_usuarios') }}"><i class="fas fa-users-cog"></i> Gestão de Equipe</a>
+            <a href="{{ url_for('gerir_tarefas') }}"><i class="fas fa-tasks"></i> Gerir Tarefas</a>
         {% endif %}
 
         {% if current_user.role == 'gestor' %}
@@ -84,5 +94,16 @@
     <div class="content">
         {% block content %}{% endblock %}
     </div>
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+            localStorage.setItem('sidebarCollapsed', sidebar.classList.contains('collapsed'));
+        }
+
+        if (localStorage.getItem('sidebarCollapsed') === 'true') {
+            document.getElementById('sidebar').classList.add('collapsed');
+        }
+    </script>
 </body>
 </html>

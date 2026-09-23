@@ -1,6 +1,7 @@
 # app.py
 import os
 import datetime
+import calendar
 import time
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
@@ -362,20 +363,30 @@ def home():
             df_2026['Quantidade'] = pd.to_numeric(df_2026['Quantidade'], errors='coerce').fillna(0)
             df_2025['Faturamento'] = df_2025['Faturamento'].apply(limpar_valor)
             df_2025['Quantidade'] = pd.to_numeric(df_2025['Quantidade'], errors='coerce').fillna(0)
-            df_2026['Data'] = df_2026['Data'].astype(str)
+            df_2026['Data'] = pd.to_datetime(df_2026['Data'], dayfirst=True, errors='coerce')
 
             # --- PROCESSAMENTO DO MÊS ATUAL ---
-            vendas_atual = df_2026[df_2026['Data'].str.contains(mes_atual_str, na=False)]
+            inicio_mes_atual = hoje.replace(day=1)
+            ultimo_dia_faturado = hoje - datetime.timedelta(days=1)
+            vendas_atual = df_2026[
+                (df_2026['Data'].dt.date >= inicio_mes_atual) &
+                (df_2026['Data'].dt.date <= ultimo_dia_faturado)
+            ]
             fat_atual = vendas_atual['Faturamento'].sum()
             ped_atual = vendas_atual['Quantidade'].sum()
 
-            # Previsão (Projeção para 30 dias com base no dia atual)
-            dia_atual = hoje.day
-            fat_previsto = (fat_atual / dia_atual) * 30 if dia_atual > 0 else 0
-            ped_previsto = (ped_atual / dia_atual) * 30 if dia_atual > 0 else 0
+            # Projeção usa apenas os dias fechados e o total real de dias do mês.
+            dias_no_mes = calendar.monthrange(hoje.year, hoje.month)[1]
+            dias_faturados = (ultimo_dia_faturado - inicio_mes_atual).days + 1
+            fat_previsto = (fat_atual / dias_faturados) * dias_no_mes if dias_faturados > 0 else 0
+            ped_previsto = (ped_atual / dias_faturados) * dias_no_mes if dias_faturados > 0 else 0
 
             # --- PROCESSAMENTO DO MÊS ANTERIOR ---
-            vendas_anterior = df_2026[df_2026['Data'].str.contains(mes_anterior_str, na=False)]
+            inicio_mes_anterior = mes_anterior_data.replace(day=1)
+            vendas_anterior = df_2026[
+                (df_2026['Data'].dt.date >= inicio_mes_anterior) &
+                (df_2026['Data'].dt.date <= mes_anterior_data)
+            ]
             fat_anterior = vendas_anterior['Faturamento'].sum()
             ped_anterior = vendas_anterior['Quantidade'].sum()
 
@@ -596,7 +607,7 @@ def tarefas_futuras():
 def notificacoes():
     avisos = Notification.query.filter(
         db.or_(Notification.user_id == current_user.id, Notification.role_target == current_user.role)
-    ).order_by(Notification.created_at.desc()).all()
+    ).order_by(Notification.created_at.desc()).limit(10).all()
     # Marca como lidas ao abrir a página
     for n in avisos:
         n.is_read = True
@@ -744,7 +755,9 @@ def chamados():
     ).distinct().order_by(Ticket.created_at.desc()).all()
     
     usuarios = User.query.filter(User.id != current_user.id).all()
-    return render_template('chamados.html', chamados=todos, ticket=None, usuarios=usuarios, hoje=hoje)
+    return render_template('chamados.html', chamados_abertos=[t for t in todos if t.status == 'Aberto'],
+                           chamados_fechados=[t for t in todos if t.status != 'Aberto'],
+                           ticket=None, usuarios=usuarios, hoje=hoje)
 
 @app.route('/chamados/<int:ticket_id>')
 @login_required
@@ -756,7 +769,9 @@ def ver_chamado(ticket_id):
     
     selecionado = Ticket.query.get_or_404(ticket_id)
     usuarios_sistema = User.query.filter(User.id != current_user.id).all()
-    return render_template('chamados.html', chamados=todos, ticket=selecionado, usuarios=usuarios_sistema, hoje=hoje)
+    return render_template('chamados.html', chamados_abertos=[t for t in todos if t.status == 'Aberto'],
+                           chamados_fechados=[t for t in todos if t.status != 'Aberto'],
+                           ticket=selecionado, usuarios=usuarios_sistema, hoje=hoje)
 
 @app.route('/responder_chamado/<int:ticket_id>', methods=['POST'])
 @login_required
@@ -1307,33 +1322,43 @@ def exportar_suprimentos():
 @app.route('/admin/gerir_tarefas', methods=['GET', 'POST'])
 @login_required # (Descomente se usar Flask-Login)
 def gerir_tarefas():
-    # Se o formulário for enviado (Transferência ou Edição)
-    if request.method == 'POST':
-        tarefa_id = request.form.get('tarefa_id')
-        novo_usuario_id = request.form.get('novo_usuario_id')
-        nova_frequencia = request.form.get('frequencia')
-        status = request.form.get('status') # Ex: Pausada, Ativa
-        
-        # Procura a tarefa e atualiza os dados
-        tarefa = Tarefa.query.get(tarefa_id)
-        if tarefa:
-            tarefa.usuario_id = novo_usuario_id
-            tarefa.frequencia = nova_frequencia
-            tarefa.status = status
-            db.session.commit()
-            flash('Tarefa atualizada com sucesso!', 'success')
-            
-        return redirect(url_request.referrer)
+    if current_user.role != 'gestor':
+        flash('Acesso negado!')
+        return redirect(url_for('home'))
 
-    # Para visualização da página (GET)
-    usuarios = Usuario.query.all()
-    usuario_selecionado_id = request.args.get('usuario_id')
-    
-    tarefas = []
+    if request.method == 'POST':
+        tarefa = Task.query.get_or_404(request.form.get('tarefa_id'))
+        estava_concluida = tarefa.is_completed
+        tarefa.title = request.form.get('title', '').strip()
+        tarefa.description = request.form.get('description', '').strip()
+        tarefa.assigned_to = request.form.get('assigned_to', type=int)
+        tarefa.recurrence = request.form.get('recurrence', 'nenhuma')
+        tarefa.is_completed = request.form.get('is_completed') == '1'
+
+        due_date = request.form.get('due_date')
+        if due_date:
+            tarefa.due_date = datetime.datetime.strptime(due_date, '%Y-%m-%d').date()
+        if tarefa.is_completed and not estava_concluida:
+            tarefa.completion_date = datetime.date.today()
+        elif not tarefa.is_completed:
+            tarefa.completion_date = None
+
+        db.session.commit()
+        flash('Tarefa atualizada com sucesso!', 'success')
+        return redirect(url_for('gerir_tarefas', usuario_id=tarefa.assigned_to))
+
+    usuarios = User.query.order_by(User.first_name, User.last_name).all()
+    usuario_selecionado_id = request.args.get('usuario_id', type=int)
+    hoje = datetime.date.today()
+    tarefas_query = Task.query.filter(
+        db.or_(Task.is_completed == False, Task.completion_date == hoje)
+    ).order_by(Task.is_completed, Task.due_date, Task.title)
     if usuario_selecionado_id:
-        tarefas = Tarefa.query.filter_by(usuario_id=usuario_selecionado_id).all()
-        
-    return render_template('admin_tarefas.html', usuarios=usuarios, tarefas=tarefas, usuario_selecionado_id=usuario_selecionado_id)
+        tarefas_query = tarefas_query.filter_by(assigned_to=usuario_selecionado_id)
+
+    tarefas = tarefas_query.all()
+    return render_template('admin_tarefas.html', usuarios=usuarios, tarefas=tarefas,
+                           usuario_selecionado_id=usuario_selecionado_id, hoje=hoje)
 
 
 if __name__ == '__main__':
